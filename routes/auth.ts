@@ -5,10 +5,11 @@
   The token needs the signature: "username:token"
 */
 
-const jwt = require('jsonwebtoken');
-const credentials = require('./credentials');
+import jwt from 'jsonwebtoken';
+import credentials from './credentials';
+import { Request, Response } from 'express';
 
-module.exports = (req, res, next) => {
+export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
   try {
     const userId = req.headers.authorization.split(':')[0];
     const token = req.headers.authorization.split(':')[1];
@@ -16,7 +17,7 @@ module.exports = (req, res, next) => {
     if (userId === 'casper' && token === 'golden_ticket') {
       next();
     } else {
-      const decodedToken = jwt.verify(token, credentials.admin_key);
+      const decodedToken:any = jwt.verify(token, credentials.admin_key);
 
       if (userId === decodedToken.userId) {
         next();

@@ -2,9 +2,9 @@
   Utility functions
 */
 
-module.exports = {
+export default {
   // Translate between the raster integer values and their urban classes. Works for greater Ghana.
-  translateUrbanClasses(klass) {
+  translateUrbanClasses(klass:number) {
     if (isNaN(klass)) { return 'Unknown'; }
     if (Number(klass) === 0) { return 'Rural'; }
     if (Number(klass) === 1) { return 'Suburban'; }

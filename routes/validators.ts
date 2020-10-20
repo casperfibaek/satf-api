@@ -7,7 +7,7 @@
  * @param {string} str Potential pluscode.
  * @return {boolean} True if valid pluscode, false otherwise.
  */
-function isValidPluscode(code) {
+export function isValidPluscode(code:any) {
   // A separator used to break the code into two parts to aid memorability.
   const seperator = '+';
 
@@ -80,7 +80,7 @@ function isValidPluscode(code) {
  * @param {string} str Potential What3words address.
  * @return {boolean} True if valid what3words, false otherwise.
  */
-function isValidWhatFreeWords(str) {
+export function isValidWhatFreeWords(str:any) {
   if (typeof str !== 'string') { return false; }
   if (str.split('.').length !== 3) { return false; }
   if (/^[a-zA-Z.]+$/.test(str) === false) { return false; }
@@ -88,33 +88,13 @@ function isValidWhatFreeWords(str) {
   return true;
 }
 
-/**
- * Check if an input string is a valid Ghana Postal GPS address
- * @param {string} str Potential Ghana Postal GPS address.
- * @return {boolean} True if valid what3words, false otherwise.
- */
-function isValidGhanaPostalGPS(str) {
-  if (typeof str !== 'string') { return false; }
-  const arr = str.split('-');
-
-  if (arr.length !== 3) { return false; }
-  if (arr[0].length !== 2) { return false; }
-  if (arr[1].length < 3 || arr[1].length > 5) { return false; }
-  if (arr[2].length < 3 || arr[2].length > 5) { return false; }
-  if (/^\d+$/.test(arr[0]) === true) { return false; }
-  if (/^[a-zA-Z]+$/.test(arr[0]) === false) { return false; }
-  if (/^\d+$/.test(arr[1]) === false) { return false; }
-  if (/^\d+$/.test(arr[2]) === false) { return false; }
-
-  return true;
-}
 
 /**
  * Check if an input number is a valid latitude coordinate reference.
  * @param {number} str Potential latitude coordinate.
  * @return {boolean} True if valid latitude, false otherwise.
  */
-function isValidLatitude(lat) {
+export function isValidLatitude(lat:any) {
   const number = Number(lat);
   try {
     if (isNaN(number)) { return false; }
@@ -130,7 +110,7 @@ function isValidLatitude(lat) {
  * @param {number} str Potential longitude coordinate.
  * @return {boolean} True if valid longitude, false otherwise.
  */
-function isValidLongitude(lat) {
+export function isValidLongitude(lat:any) {
   const number = Number(lat);
   try {
     if (isNaN(number)) { return false; }
@@ -140,11 +120,3 @@ function isValidLongitude(lat) {
     return false;
   }
 }
-
-module.exports = {
-  isValidLongitude,
-  isValidLatitude,
-  isValidGhanaPostalGPS,
-  isValidWhatFreeWords,
-  isValidPluscode,
-};

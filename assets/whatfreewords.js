@@ -827,6 +827,4 @@ WhatFreeWords.build_words();
 
 // src/foot.js:
 
-try {
-    module.exports = WhatFreeWords;
-} catch (e) {}
+module.exports = WhatFreeWords;

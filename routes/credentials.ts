@@ -3,7 +3,7 @@
   The admin-key is a header-token that always forwards.
 */
 
-module.exports = {
+export default {
   user: 'niras@satf-db',
   host: 'satf-db.postgres.database.azure.com',
   database: 'satf',

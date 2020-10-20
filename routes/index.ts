@@ -1,23 +1,22 @@
 // The routes from the SATF API available at satf.azurewebsites.net/api.
-
-const express = require('express');
-const pg = require('pg');
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-const cache = require('./cache');
-const auth = require('./auth');
-const credentials = require('./credentials');
-const utils = require('./utils');
-const validators = require('./validators');
-const Wfw = require('./assets/whatfreewords');
-const Pluscodes = require('./assets/pluscodes');
+import { Request, Response } from 'express';
+import express from 'express';
+import pg from 'pg';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import auth from './auth';
+import credentials from './credentials';
+import utils from './utils';
+import { isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords } from './validators';
+import Wfw from '../assets/whatfreewords';
+import Pluscodes from '../assets/pluscodes';
 
 const openLocationCode = Pluscodes();
 const router = express.Router();
 
 const pool = new pg.Pool(credentials);
 
-async function latlng_to_what3words(req, res) {
+async function latlng_to_what3words(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -26,7 +25,7 @@ async function latlng_to_what3words(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -50,7 +49,7 @@ async function latlng_to_what3words(req, res) {
   }
 }
 
-async function what3words_to_latlng(req, res) {
+async function what3words_to_latlng(req:Request, res:Response) {
   if (!req.query.words) {
     return res.status(400).json({
       status: 'failure',
@@ -59,7 +58,7 @@ async function what3words_to_latlng(req, res) {
     });
   }
 
-  if (!validators.isValidWhatFreeWords(req.query.words)) {
+  if (!isValidWhatFreeWords(req.query.words)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid what3words input',
@@ -83,7 +82,7 @@ async function what3words_to_latlng(req, res) {
   }
 }
 
-async function latlng_to_pluscode(req, res) {
+async function latlng_to_pluscode(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -92,7 +91,7 @@ async function latlng_to_pluscode(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -117,7 +116,7 @@ async function latlng_to_pluscode(req, res) {
   }
 }
 
-async function pluscode_to_latlng(req, res) {
+async function pluscode_to_latlng(req:Request, res:Response) {
   if (!req.query.code) {
     return res.status(400).json({
       status: 'failure',
@@ -128,7 +127,7 @@ async function pluscode_to_latlng(req, res) {
 
   const pluscode = String(req.query.code).replace(' ', '+');
 
-  if (!validators.isValidPluscode(pluscode)) {
+  if (!isValidPluscode(pluscode)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid pluscode input',
@@ -137,7 +136,7 @@ async function pluscode_to_latlng(req, res) {
   }
 
   try {
-    const code = openLocationCode.decode(pluscode);
+    const code:any = openLocationCode.decode(pluscode);
     return res.status(200).json({
       status: 'success',
       message: [code.latitudeCenter, code.longitudeCenter],
@@ -153,7 +152,7 @@ async function pluscode_to_latlng(req, res) {
   }
 }
 
-async function admin_level_1(req, res) {
+async function admin_level_1(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -162,7 +161,7 @@ async function admin_level_1(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -202,7 +201,7 @@ async function admin_level_1(req, res) {
   }
 }
 
-async function admin_level_2(req, res) {
+async function admin_level_2(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -211,7 +210,7 @@ async function admin_level_2(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -251,7 +250,7 @@ async function admin_level_2(req, res) {
   }
 }
 
-async function hello_world(req, res) {
+async function hello_world(req:Request, res:Response) {
   return res.status(200).json({
     status: 'success',
     message: 'Hello World!',
@@ -259,7 +258,7 @@ async function hello_world(req, res) {
   });
 }
 
-async function admin_level_2_fuzzy_tri(req, res) {
+async function admin_level_2_fuzzy_tri(req:Request, res:Response) {
   if (!req.query.name) {
     return res.status(400).json({
       status: 'failure',
@@ -299,7 +298,7 @@ async function admin_level_2_fuzzy_tri(req, res) {
   }
 }
 
-async function admin_level_2_fuzzy_lev(req, res) {
+async function admin_level_2_fuzzy_lev(req:Request, res:Response) {
   if (!req.query.name) {
     return res.status(400).json({
       status: 'failure',
@@ -339,7 +338,7 @@ async function admin_level_2_fuzzy_lev(req, res) {
   }
 }
 
-async function urban_status(req, res) {
+async function urban_status(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -348,7 +347,7 @@ async function urban_status(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -373,7 +372,7 @@ async function urban_status(req, res) {
     }
     return res.status(200).json({
       status: 'success',
-      message: utils.translateUrbanClasses('0'),
+      message: utils.translateUrbanClasses(0),
       function: 'urban_status',
     });
   } catch (err) {
@@ -386,7 +385,7 @@ async function urban_status(req, res) {
   }
 }
 
-async function urban_status_simple(req, res) {
+async function urban_status_simple(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -395,7 +394,7 @@ async function urban_status_simple(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -420,7 +419,7 @@ async function urban_status_simple(req, res) {
     }
     return res.status(200).json({
       status: 'success',
-      message: utils.translateUrbanClasses('0'),
+      message: utils.translateUrbanClasses(0),
       function: 'urban_status_simple',
     });
   } catch (err) {
@@ -433,7 +432,7 @@ async function urban_status_simple(req, res) {
   }
 }
 
-async function population_density_buffer(req, res) {
+async function population_density_buffer(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.buffer) {
     return res.status(400).json({
       status: 'failure',
@@ -442,7 +441,7 @@ async function population_density_buffer(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -489,7 +488,7 @@ async function population_density_buffer(req, res) {
   }
 }
 
-async function population_density_walk(req, res) {
+async function population_density_walk(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -498,7 +497,7 @@ async function population_density_walk(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -545,7 +544,7 @@ async function population_density_walk(req, res) {
   }
 }
 
-async function population_density_bike(req, res) {
+async function population_density_bike(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -554,7 +553,7 @@ async function population_density_bike(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -601,7 +600,7 @@ async function population_density_bike(req, res) {
   }
 }
 
-async function population_density_car(req, res) {
+async function population_density_car(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -610,7 +609,7 @@ async function population_density_car(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -657,7 +656,7 @@ async function population_density_car(req, res) {
   }
 }
 // New Function - population density in walking distance
-async function pop_density_isochrone_walk(req, res) {
+async function pop_density_isochrone_walk(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -666,7 +665,7 @@ async function pop_density_isochrone_walk(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -703,7 +702,7 @@ async function pop_density_isochrone_walk(req, res) {
   }
 }
 // New Function - population density in biking distance
-async function pop_density_isochrone_bike(req, res) {
+async function pop_density_isochrone_bike(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -712,7 +711,7 @@ async function pop_density_isochrone_bike(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -749,7 +748,7 @@ async function pop_density_isochrone_bike(req, res) {
   }
 }
 // New Function - population density in driving distance
-async function pop_density_isochrone_car(req, res) {
+async function pop_density_isochrone_car(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -758,7 +757,7 @@ async function pop_density_isochrone_car(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -795,7 +794,7 @@ async function pop_density_isochrone_car(req, res) {
   }
 }
 
-async function nearest_placename(req, res) {
+async function nearest_placename(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -804,7 +803,7 @@ async function nearest_placename(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -842,7 +841,7 @@ async function nearest_placename(req, res) {
   }
 }
 
-async function nearest_poi(req, res) {
+async function nearest_poi(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -851,7 +850,7 @@ async function nearest_poi(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -889,7 +888,7 @@ async function nearest_poi(req, res) {
   }
 }
 
-async function get_banks(req, res) {
+async function get_banks(req:Request, res:Response) {
   if (!req.query.name) {
     return res.status(400).json({
       status: 'failure',
@@ -898,7 +897,7 @@ async function get_banks(req, res) {
     });
   }
 
-  if (String(req.query.name).lenght < 2) {
+  if (String(req.query.name).length < 2) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input (name)',
@@ -935,7 +934,7 @@ async function get_banks(req, res) {
       round(ST_X("geom")::numeric, 6) AS "lng",
       round(ST_Y("geom")::numeric, 6) AS "lat"
     FROM ghana_poi
-    WHERE "fclass" = 'bank' AND (LOWER("name") LIKE '%${name.toLowerCase()}%' OR similarity("name", '${name}') > ${target})
+    WHERE "fclass" = 'bank' AND (LOWER("name") LIKE '%${String(name).toLowerCase()}%' OR similarity("name", '${name}') > ${target})
     ORDER BY SIMILARITY("name", 'absa') DESC;
   `;
 
@@ -966,7 +965,7 @@ async function get_banks(req, res) {
   }
 }
 
-async function nearest_bank(req, res) {
+async function nearest_bank(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -975,7 +974,7 @@ async function nearest_bank(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -1015,7 +1014,7 @@ async function nearest_bank(req, res) {
   }
 }
 
-async function nearest_bank_distance(req, res) {
+async function nearest_bank_distance(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: 'failure',
@@ -1024,7 +1023,7 @@ async function nearest_bank_distance(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng)) {
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -1064,7 +1063,7 @@ async function nearest_bank_distance(req, res) {
   }
 }
 // New function - Isochrone walking distance
-async function isochrone_walk(req, res) {
+async function isochrone_walk(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -1073,7 +1072,7 @@ async function isochrone_walk(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -1110,7 +1109,7 @@ async function isochrone_walk(req, res) {
   }
 }
 // New Function - Isochrone biking distance
-async function isochrone_bike(req, res) {
+async function isochrone_bike(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -1119,7 +1118,7 @@ async function isochrone_bike(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -1156,7 +1155,7 @@ async function isochrone_bike(req, res) {
   }
 }
 // New Function - Isochrone car
-async function isochrone_car(req, res) {
+async function isochrone_car(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
@@ -1165,7 +1164,7 @@ async function isochrone_car(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat) || !validators.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -1203,13 +1202,13 @@ async function isochrone_car(req, res) {
 }
 
 // User Control
-const getHashedPassword = (password) => {
+const getHashedPassword = (password:string) => {
   const sha256 = crypto.createHash('sha256');
   const hash = sha256.update(password).digest('base64');
   return hash;
 };
 
-function checkPassword(password) {
+function checkPassword(password:string) {
   const regex = /^[A-Za-z]\w{5,13}$/;
   if (password.match(regex)) {
     return true;
@@ -1217,7 +1216,7 @@ function checkPassword(password) {
   return false;
 }
 
-function checkUsername(username) {
+function checkUsername(username:string) {
   const regex = /^[A-Za-z]\w{5,13}$/;
   if (username.match(regex)) {
     return true;
@@ -1225,7 +1224,7 @@ function checkUsername(username) {
   return false;
 }
 
-async function usernameExists(username) {
+async function usernameExists(username:string) {
   const dbQuery = `
     SELECT id
     FROM users
@@ -1245,7 +1244,7 @@ async function usernameExists(username) {
   }
 }
 
-async function verifyUser(username, password) {
+async function verifyUser(username:string, password:string) {
   const dbQuery = `
     SELECT id
     FROM users
@@ -1265,7 +1264,7 @@ async function verifyUser(username, password) {
   }
 }
 
-async function insertUser(username, password) {
+async function insertUser(username:string, password:string) {
   const dbQuery = `
     INSERT INTO users ("username", "password", "created_on", "last_login")
     VALUES ('${username}', '${password}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
@@ -1280,7 +1279,7 @@ async function insertUser(username, password) {
   }
 }
 
-async function deleteUser(username) {
+async function deleteUser(username:string) {
   const dbQuery = `
     DELETE FROM users
     WHERE "username" = '${username}';
@@ -1295,7 +1294,7 @@ async function deleteUser(username) {
   }
 }
 
-async function create_user(req, res) {
+async function create_user(req:Request, res:Response) {
   if (!req.body.username || !req.body.password || !req.body.confirm) {
     return res.status(400).json({
       status: 'failure',
@@ -1359,7 +1358,7 @@ async function create_user(req, res) {
   });
 }
 
-async function login_user(req, res) {
+async function login_user(req:Request, res:Response) {
   if (!req.body.username || !req.body.password) {
     return res.status(400).json({
       status: 'failure',
@@ -1421,7 +1420,7 @@ async function login_user(req, res) {
   }
 }
 
-async function auth_token(token_to_verify) {
+async function auth_token(token_to_verify:string) {
   try {
     const userId = token_to_verify.split(':')[0];
     const token = token_to_verify.split(':')[1];
@@ -1429,7 +1428,7 @@ async function auth_token(token_to_verify) {
     if (userId === 'casper' && token === 'golden_ticket') {
       return true;
     }
-    const decodedToken = jwt.verify(token, credentials.admin_key);
+    const decodedToken:any = jwt.verify(token, credentials.admin_key);
 
     if (userId === decodedToken.userId) {
       return true;
@@ -1442,7 +1441,7 @@ async function auth_token(token_to_verify) {
   }
 }
 
-async function delete_user(req, res) {
+async function delete_user(req:Request, res:Response) {
   if (req.body.token) {
     const { token } = req.body;
     const authorised = auth_token(token);
@@ -1531,7 +1530,7 @@ async function delete_user(req, res) {
 }
 
 // Getting time and distance from A to B
-async function a_to_b_time_distance_walk(req, res) {
+async function a_to_b_time_distance_walk(req:Request, res:Response) {
   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
     return res.status(400).json({
       status: 'failure',
@@ -1540,7 +1539,7 @@ async function a_to_b_time_distance_walk(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat1) || !validators.isValidLatitude(req.query.lng1) || !validators.isValidLatitude(req.query.lat2) || !validators.isValidLatitude(req.query.lng2)) {
+  if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -1579,7 +1578,7 @@ async function a_to_b_time_distance_walk(req, res) {
 }
 
 // A to B Biking function
-async function a_to_b_time_distance_bike(req, res) {
+async function a_to_b_time_distance_bike(req:Request, res:Response) {
   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
     return res.status(400).json({
       status: 'failure',
@@ -1588,7 +1587,7 @@ async function a_to_b_time_distance_bike(req, res) {
     });
   }
 
-  if (!validators.isValidLatitude(req.query.lat1) || !validators.isValidLatitude(req.query.lng1) || !validators.isValidLatitude(req.query.lat2) || !validators.isValidLatitude(req.query.lng2)) {
+  if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
@@ -1626,48 +1625,48 @@ async function a_to_b_time_distance_bike(req, res) {
   }
 }
 
-function error_log(req, res) {
+function error_log(req:Request, res:Response) {
   const { body } = req;
   console.log(body);
   res.status(200).send();
 }
 
-router.route('/').get(auth, (req, res) => res.send('home/api'));
+router.route('/').get(auth, (req:Request, res:Response) => res.send('home/api'));
 
 router.route('/hello_world').get(hello_world);
-router.route('/latlng_to_what3words').get(auth, cache, latlng_to_what3words);
-router.route('/what3words_to_latlng').get(auth, cache, what3words_to_latlng);
-router.route('/latlng_to_pluscode').get(auth, cache, latlng_to_pluscode);
-router.route('/pluscode_to_latlng').get(auth, cache, pluscode_to_latlng);
-router.route('/population_density_walk').get(auth, cache, population_density_walk);
-router.route('/population_density_bike').get(auth, cache, population_density_bike);
-router.route('/population_density_car').get(auth, cache, population_density_car);
-router.route('/pop_density_isochrone_walk').get(auth, cache, pop_density_isochrone_walk);
-router.route('/pop_density_isochrone_bike').get(auth, cache, pop_density_isochrone_bike);
-router.route('/pop_density_isochrone_car').get(auth, cache, pop_density_isochrone_car);
-router.route('/isochrone_walk').get(auth, cache, isochrone_walk);
-router.route('/isochrone_bike').get(auth, cache, isochrone_bike);
-router.route('/isochrone_car').get(auth, cache, isochrone_car);
-router.route('/population_density_buffer').get(auth, cache, population_density_buffer);
-router.route('/urban_status').get(auth, cache, urban_status);
-router.route('/urban_status_simple').get(auth, cache, urban_status_simple);
-router.route('/admin_level_1').get(auth, cache, admin_level_1);
-router.route('/admin_level_2').get(auth, cache, admin_level_2);
-router.route('/admin_level_2_fuzzy_tri').get(auth, cache, admin_level_2_fuzzy_tri);
-router.route('/admin_level_2_fuzzy_lev').get(auth, cache, admin_level_2_fuzzy_lev);
-router.route('/nearest_placename').get(auth, cache, nearest_placename);
-router.route('/nearest_poi').get(auth, cache, nearest_poi);
-router.route('/nearest_bank').get(auth, cache, nearest_bank);
-router.route('/nearest_bank_distance').get(auth, cache, nearest_bank_distance);
-router.route('/get_banks').get(auth, cache, get_banks);
-router.route('/a_to_b_time_distance_walk').get(auth, cache, a_to_b_time_distance_walk);
-router.route('/a_to_b_time_distance_bike').get(auth, cache, a_to_b_time_distance_bike);
+router.route('/latlng_to_what3words').get(auth, latlng_to_what3words);
+router.route('/what3words_to_latlng').get(auth, what3words_to_latlng);
+router.route('/latlng_to_pluscode').get(auth, latlng_to_pluscode);
+router.route('/pluscode_to_latlng').get(auth, pluscode_to_latlng);
+router.route('/population_density_walk').get(auth, population_density_walk);
+router.route('/population_density_bike').get(auth, population_density_bike);
+router.route('/population_density_car').get(auth, population_density_car);
+router.route('/pop_density_isochrone_walk').get(auth, pop_density_isochrone_walk);
+router.route('/pop_density_isochrone_bike').get(auth, pop_density_isochrone_bike);
+router.route('/pop_density_isochrone_car').get(auth, pop_density_isochrone_car);
+router.route('/isochrone_walk').get(auth, isochrone_walk);
+router.route('/isochrone_bike').get(auth, isochrone_bike);
+router.route('/isochrone_car').get(auth, isochrone_car);
+router.route('/population_density_buffer').get(auth, population_density_buffer);
+router.route('/urban_status').get(auth, urban_status);
+router.route('/urban_status_simple').get(auth, urban_status_simple);
+router.route('/admin_level_1').get(auth, admin_level_1);
+router.route('/admin_level_2').get(auth, admin_level_2);
+router.route('/admin_level_2_fuzzy_tri').get(auth, admin_level_2_fuzzy_tri);
+router.route('/admin_level_2_fuzzy_lev').get(auth, admin_level_2_fuzzy_lev);
+router.route('/nearest_placename').get(auth, nearest_placename);
+router.route('/nearest_poi').get(auth, nearest_poi);
+router.route('/nearest_bank').get(auth, nearest_bank);
+router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
+router.route('/get_banks').get(auth, get_banks);
+router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
+router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);
 router.route('/create_user').post(create_user);
 router.route('/login_user').post(login_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
 // TODO: This should take a post of a JSON object and batch process --> return.
-router.route('/batch').get(auth, (req, res) => res.send('home/api/batch'));
+router.route('/batch').get(auth, (req:Request, res:Response) => res.send('home/api/batch'));
 
-module.exports = router;
+export default router;
