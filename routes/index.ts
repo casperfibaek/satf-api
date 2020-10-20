@@ -5,12 +5,20 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
-import utils from './utils';
+import { translateUrbanClasses } from './utils';
 import {
   isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
 } from './validators';
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
+
+interface ApiResponse {
+  status: 'failure' |'success',
+  message: any,
+  function: string,
+  username: string,
+  token: string,
+}
 
 const openLocationCode = Pluscodes();
 const router = express.Router();
@@ -23,7 +31,7 @@ async function latlng_to_what3words(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'latlng_to_what3words',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -31,7 +39,7 @@ async function latlng_to_what3words(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'latlng_to_what3words',
-    });
+    } as ApiResponse);
   }
 
   try {
@@ -39,14 +47,14 @@ async function latlng_to_what3words(req:Request, res:Response) {
       status: 'success',
       message: Wfw.latlon2words(Number(req.query.lat), Number(req.query.lng)),
       function: 'latlng_to_what3words',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'latlng_to_what3words',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -56,7 +64,7 @@ async function what3words_to_latlng(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing words',
       function: 'what3words_to_latlng',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidWhatFreeWords(req.query.words)) {
@@ -64,7 +72,7 @@ async function what3words_to_latlng(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid what3words input',
       function: 'what3words_to_latlng',
-    });
+    } as ApiResponse);
   }
 
   try {
@@ -72,14 +80,14 @@ async function what3words_to_latlng(req:Request, res:Response) {
       status: 'success',
       message: Wfw.words2latlon(req.query.words),
       function: 'what3words_to_latlng',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'what3words_to_latlng',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -89,7 +97,7 @@ async function latlng_to_pluscode(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'latlng_to_pluscode',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -97,7 +105,7 @@ async function latlng_to_pluscode(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'latlng_to_pluscode',
-    });
+    } as ApiResponse);
   }
 
   try {
@@ -106,14 +114,14 @@ async function latlng_to_pluscode(req:Request, res:Response) {
       status: 'success',
       message: pluscode,
       function: 'latlng_to_pluscode',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Server unable to parse pluscode',
       function: 'latlng_to_pluscode',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -123,7 +131,7 @@ async function pluscode_to_latlng(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing code',
       function: 'pluscode_to_latlng',
-    });
+    } as ApiResponse);
   }
 
   const pluscode = String(req.query.code).replace(' ', '+');
@@ -133,7 +141,7 @@ async function pluscode_to_latlng(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid pluscode input',
       function: 'pluscode_to_latlng',
-    });
+    } as ApiResponse);
   }
 
   try {
@@ -142,14 +150,14 @@ async function pluscode_to_latlng(req:Request, res:Response) {
       status: 'success',
       message: [code.latitudeCenter, code.longitudeCenter],
       function: 'pluscode_to_latlng',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pluscode_to_latlng',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -159,7 +167,7 @@ async function admin_level_1(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'admin_level_1',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -167,7 +175,7 @@ async function admin_level_1(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'admin_level_1',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -185,20 +193,20 @@ async function admin_level_1(req:Request, res:Response) {
         status: 'success',
         message: dbResponse.rows[0].adm1,
         function: 'admin_level_1',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_1',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_1',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -208,7 +216,7 @@ async function admin_level_2(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'admin_level_2',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -216,7 +224,7 @@ async function admin_level_2(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'admin_level_2',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -234,20 +242,20 @@ async function admin_level_2(req:Request, res:Response) {
         status: 'success',
         message: dbResponse.rows[0].adm2,
         function: 'admin_level_2',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_2',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_2',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -256,7 +264,7 @@ async function hello_world(req:Request, res:Response) {
     status: 'success',
     message: 'Hello World!',
     function: 'hello_world',
-  });
+  } as ApiResponse);
 }
 
 async function admin_level_2_fuzzy_tri(req:Request, res:Response) {
@@ -265,7 +273,7 @@ async function admin_level_2_fuzzy_tri(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing name',
       function: 'admin_level_2_fuzzy_tri',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -282,20 +290,20 @@ async function admin_level_2_fuzzy_tri(req:Request, res:Response) {
         status: 'success',
         message: dbResponse.rows[0].name,
         function: 'admin_level_2_fuzzy_tri',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_2_fuzzy_tri',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_2_fuzzy_tri',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -305,7 +313,7 @@ async function admin_level_2_fuzzy_lev(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing name',
       function: 'admin_level_2_fuzzy_lev',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -322,20 +330,20 @@ async function admin_level_2_fuzzy_lev(req:Request, res:Response) {
         status: 'success',
         message: dbResponse.rows[0].name,
         function: 'admin_level_2_fuzzy_lev',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_2_fuzzy_lev',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'admin_level_2_fuzzy_lev',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -345,7 +353,7 @@ async function urban_status(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'urban_status',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -353,7 +361,7 @@ async function urban_status(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'urban_status',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -367,22 +375,22 @@ async function urban_status(req:Request, res:Response) {
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: utils.translateUrbanClasses(dbResponse.rows[0].urban_status),
+        message: translateUrbanClasses(dbResponse.rows[0].urban_status),
         function: 'urban_status',
-      });
+      } as ApiResponse);
     }
     return res.status(200).json({
       status: 'success',
-      message: utils.translateUrbanClasses(0),
+      message: translateUrbanClasses(0),
       function: 'urban_status',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'urban_status',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -392,7 +400,7 @@ async function urban_status_simple(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'urban_status_simple',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -400,7 +408,7 @@ async function urban_status_simple(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'urban_status_simple',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -414,22 +422,22 @@ async function urban_status_simple(req:Request, res:Response) {
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: utils.translateUrbanClasses(dbResponse.rows[0].urban_status_simple),
+        message: translateUrbanClasses(dbResponse.rows[0].urban_status_simple),
         function: 'urban_status_simple',
-      });
+      } as ApiResponse);
     }
     return res.status(200).json({
       status: 'success',
-      message: utils.translateUrbanClasses(0),
+      message: translateUrbanClasses(0),
       function: 'urban_status_simple',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'urban_status_simple',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -439,7 +447,7 @@ async function population_density_buffer(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or buffer',
       function: 'population_density_buffer',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
@@ -447,7 +455,7 @@ async function population_density_buffer(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'population_density_buffer',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -472,20 +480,20 @@ async function population_density_buffer(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].pop_dense_buf)),
         function: 'population_density_buffer',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_buffer',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_buffer',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -495,7 +503,7 @@ async function population_density_walk(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'population_density_walk',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -503,7 +511,7 @@ async function population_density_walk(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'population_density_walk',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -528,20 +536,20 @@ async function population_density_walk(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].pop_dense_walk)),
         function: 'population_density_walk',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_walk',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_walk',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -551,7 +559,7 @@ async function population_density_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'population_density_bike',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -559,7 +567,7 @@ async function population_density_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'population_density_bike',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -584,20 +592,20 @@ async function population_density_bike(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].pop_dense_bike)),
         function: 'population_density_bike',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_bike',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_bike',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -607,7 +615,7 @@ async function population_density_car(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'population_density_car',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -615,7 +623,7 @@ async function population_density_car(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'population_density_car',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -640,20 +648,20 @@ async function population_density_car(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].pop_dense_car)),
         function: 'population_density_car',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_car',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'population_density_car',
-    });
+    } as ApiResponse);
   }
 }
 // New Function - population density in walking distance
@@ -663,7 +671,7 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'pop_density_isochrone_walk',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -671,7 +679,7 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'pop_density_isochrone_walk',
-    });
+    } as ApiResponse);
   }
 
   // function collecting all values from raster ghana_pop_dens inside the isochrone of walking distance
@@ -686,20 +694,20 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
         function: 'pop_density_isochrone_walk',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pop_density_isochrone_walk',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pop_density_isochrone_walk',
-    });
+    } as ApiResponse);
   }
 }
 // New Function - population density in biking distance
@@ -709,7 +717,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'pop_density_isochrone_bike',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -717,7 +725,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'pop_density_isochrone_bike',
-    });
+    } as ApiResponse);
   }
 
   // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
@@ -732,20 +740,20 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
         function: 'pop_density_isochrone_bike',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pop_density_isochrone_bike',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pop_density_isochrone_bike',
-    });
+    } as ApiResponse);
   }
 }
 // New Function - population density in driving distance
@@ -755,7 +763,7 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'pop_density_isochrone_car',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -763,7 +771,7 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'pop_density_isochrone_car',
-    });
+    } as ApiResponse);
   }
 
   // function collecting all values from raster ghana_pop_dens inside the isochrone of driving distance
@@ -778,20 +786,20 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_car)),
         function: 'pop_density_isochrone_car',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pop_density_isochrone_car',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pop_density_isochrone_car',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -801,7 +809,7 @@ async function nearest_placename(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'nearest_placename',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -809,7 +817,7 @@ async function nearest_placename(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'nearest_placename',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -825,20 +833,20 @@ async function nearest_placename(req:Request, res:Response) {
         status: 'success',
         message: `${dbResponse.rows[0].name}, ${dbResponse.rows[0].fclass}`,
         function: 'nearest_placename',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_placename',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_placename',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -848,7 +856,7 @@ async function nearest_poi(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'nearest_poi',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -856,7 +864,7 @@ async function nearest_poi(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'nearest_poi',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -872,20 +880,20 @@ async function nearest_poi(req:Request, res:Response) {
         status: 'success',
         message: `${dbResponse.rows[0].name}, ${dbResponse.rows[0].fclass}`,
         function: 'nearest_poi',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_poi',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_poi',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -895,7 +903,7 @@ async function get_banks(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing name',
       function: 'get_banks',
-    });
+    } as ApiResponse);
   }
 
   if (String(req.query.name).length < 2) {
@@ -903,7 +911,7 @@ async function get_banks(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input (name)',
       function: 'get_banks',
-    });
+    } as ApiResponse);
   }
 
   let target = 0.4;
@@ -915,7 +923,7 @@ async function get_banks(req:Request, res:Response) {
         status: 'failure',
         message: 'Invalid input (target)',
         function: 'get_banks',
-      });
+      } as ApiResponse);
     }
 
     if (Number(req.query.target) > 1 || Number(req.query.target) < 0) {
@@ -923,7 +931,7 @@ async function get_banks(req:Request, res:Response) {
         status: 'failure',
         message: 'Invalid input (target)',
         function: 'get_banks',
-      });
+      } as ApiResponse);
     }
 
     target = Number(req.query.target);
@@ -955,14 +963,14 @@ async function get_banks(req:Request, res:Response) {
       status: 'success',
       message: returnArray,
       function: 'get_banks',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'get_banks',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -972,7 +980,7 @@ async function nearest_bank(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'nearest_bank',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -980,7 +988,7 @@ async function nearest_bank(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'nearest_bank',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -998,20 +1006,20 @@ async function nearest_bank(req:Request, res:Response) {
         status: 'success',
         message: dbResponse.rows[0].name,
         function: 'nearest_bank',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_bank',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_bank',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -1021,7 +1029,7 @@ async function nearest_bank_distance(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat or lng',
       function: 'nearest_bank_distance',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
@@ -1029,7 +1037,7 @@ async function nearest_bank_distance(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'nearest_bank_distance',
-    });
+    } as ApiResponse);
   }
 
   const dbQuery = `
@@ -1046,31 +1054,31 @@ async function nearest_bank_distance(req:Request, res:Response) {
         status: 'success',
         message: Math.round(Number(dbResponse.rows[0].distance)),
         function: 'nearest_bank_distance',
-      });
+      } as ApiResponse);
     }
 
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_bank_distance',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nearest_bank_distance',
-    });
+    } as ApiResponse);
   }
 }
-// New function - Isochrone walking distance
+
 async function isochrone_walk(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'isochrone_walk',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -1078,7 +1086,7 @@ async function isochrone_walk(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'isochrone_walk',
-    });
+    } as ApiResponse);
   }
 
   // function creating an isochrone of walking distance
@@ -1093,20 +1101,20 @@ async function isochrone_walk(req:Request, res:Response) {
         status: 'success',
         message: JSON.parse(dbResponse.rows[0].geom),
         function: 'isochrone_walk',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating isocrone',
       function: 'isochrone_walk',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating isocrone',
       function: 'isochrone_walk',
-    });
+    } as ApiResponse);
   }
 }
 // New Function - Isochrone biking distance
@@ -1116,7 +1124,7 @@ async function isochrone_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'isochrone_bike',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -1124,7 +1132,7 @@ async function isochrone_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'isochrone_bike',
-    });
+    } as ApiResponse);
   }
 
   // function creating an isochrone of biking distance
@@ -1139,20 +1147,20 @@ async function isochrone_bike(req:Request, res:Response) {
         status: 'success',
         message: JSON.parse(dbResponse.rows[0].geom),
         function: 'isochrone_bike',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating isocrone',
       function: 'isochrone_bike',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating isocrone',
       function: 'isochrone_bike',
-    });
+    } as ApiResponse);
   }
 }
 // New Function - Isochrone car
@@ -1162,7 +1170,7 @@ async function isochrone_car(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng or minutes',
       function: 'isochrone_car',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
@@ -1170,7 +1178,7 @@ async function isochrone_car(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'isochrone_car',
-    });
+    } as ApiResponse);
   }
 
   // function creating an isochrone of driving distance
@@ -1185,20 +1193,20 @@ async function isochrone_car(req:Request, res:Response) {
         status: 'success',
         message: JSON.parse(dbResponse.rows[0].geom),
         function: 'isochrone_car',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating isocrone',
       function: 'isochrone_car',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating isocrone',
       function: 'isochrone_car',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -1300,9 +1308,11 @@ async function create_user(req:Request, res:Response) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing username, password or confirmPassword',
-    });
+      function: 'create_user',
+    } as ApiResponse);
   }
-  const { username, password, confirm } = req.body;
+
+  const { username, password, confirm }: { username:string, password:string, confirm:string } = req.body;
 
   // Check if the password and confirm password fields match
   if (password === confirm) {
@@ -1312,7 +1322,7 @@ async function create_user(req:Request, res:Response) {
         status: 'failure',
         message: 'Password must be between 6 to 14 characters which contain only characters, numeric digits, underscore and first character must be a letter', // eslint-disable-line
         function: 'create_user',
-      });
+      } as ApiResponse);
     }
 
     if (!checkUsername(username)) {
@@ -1320,7 +1330,7 @@ async function create_user(req:Request, res:Response) {
         status: 'failure',
         message: 'Username must be between 6 to 14 characters which contain only characters, numeric digits, underscore and first character must be a letter', // eslint-disable-line
         function: 'create_user',
-      });
+      } as ApiResponse);
     }
 
     const user_exists = await usernameExists(username);
@@ -1329,14 +1339,14 @@ async function create_user(req:Request, res:Response) {
         status: 'failure',
         message: 'Username already exists',
         function: 'create_user',
-      });
+      } as ApiResponse);
     }
 
     const hashedPassword = getHashedPassword(password);
 
     const insertedSuccessfully = await insertUser(username, hashedPassword);
     if (insertedSuccessfully) {
-      const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      const token:string = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
 
       return res.status(200).json({
         status: 'success',
@@ -1344,19 +1354,19 @@ async function create_user(req:Request, res:Response) {
         function: 'create_user',
         username,
         token,
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Internal error while creating user.',
       function: 'create_user',
-    });
+    } as ApiResponse);
   }
   return res.status(400).send({
     status: 'failure',
     message: 'Passwords do not match.',
     function: 'create_user',
-  });
+  } as ApiResponse);
 }
 
 async function login_user(req:Request, res:Response) {
@@ -1365,7 +1375,7 @@ async function login_user(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing username or password',
       function: 'login_user',
-    });
+    } as ApiResponse);
   }
   const { username, password } = req.body;
 
@@ -1374,7 +1384,7 @@ async function login_user(req:Request, res:Response) {
       status: 'failure',
       message: 'Username must be between 6-16 characters.',
       function: 'login_user',
-    });
+    } as ApiResponse);
   }
 
   if (!checkPassword(password)) {
@@ -1382,7 +1392,7 @@ async function login_user(req:Request, res:Response) {
       status: 'failure',
       message: 'Password must be between 6-16 characters.',
       function: 'login_user',
-    });
+    } as ApiResponse);
   }
 
   const hashedPassword = getHashedPassword(password);
@@ -1404,20 +1414,20 @@ async function login_user(req:Request, res:Response) {
         function: 'login_user',
         username,
         token,
-      });
+      } as ApiResponse);
     }
     return res.status(401).json({
       status: 'failure',
       message: 'User not found or unauthorised.',
       function: 'login_user',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Internal Error while logging user in.',
       function: 'login_user',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -1452,7 +1462,7 @@ async function delete_user(req:Request, res:Response) {
         status: 'failure',
         message: 'Invalid token.',
         function: 'delete_user',
-      });
+      } as ApiResponse);
     }
     try {
       const username = token.split(':')[0];
@@ -1463,7 +1473,7 @@ async function delete_user(req:Request, res:Response) {
           status: 'failure',
           message: 'User does not exist',
           function: 'delete_user',
-        });
+        } as ApiResponse);
       }
 
       const deletedUser = await deleteUser(username);
@@ -1474,7 +1484,7 @@ async function delete_user(req:Request, res:Response) {
           message: 'User deleted',
           function: 'delete_user',
           username,
-        });
+        } as ApiResponse);
       }
     } catch (err) {
       console.log(err);
@@ -1482,7 +1492,7 @@ async function delete_user(req:Request, res:Response) {
         status: 'failure',
         message: 'Internal Error while logging user in.',
         function: 'delete_user',
-      });
+      } as ApiResponse);
     }
   }
   if (!req.body.username || !req.body.password) {
@@ -1490,7 +1500,7 @@ async function delete_user(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing username or password',
       function: 'delete_user',
-    });
+    } as ApiResponse);
   }
 
   const { username, password } = req.body;
@@ -1510,7 +1520,7 @@ async function delete_user(req:Request, res:Response) {
             message: 'User deleted',
             function: 'delete_user',
             username,
-          });
+          } as ApiResponse);
         }
       }
     }
@@ -1520,14 +1530,14 @@ async function delete_user(req:Request, res:Response) {
       status: 'failure',
       message: 'Internal Error while logging user in.',
       function: 'delete_user',
-    });
+    } as ApiResponse);
   }
 
   return res.status(401).json({
     status: 'failure',
     message: 'Invalid credentials to delete user.',
     function: 'delete_user',
-  });
+  } as ApiResponse);
 }
 
 // Getting time and distance from A to B
@@ -1537,7 +1547,7 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng for starting or ending point',
       function: 'a_to_b_time_distance_walk',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
@@ -1545,7 +1555,7 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'a_to_b_time_distance_walk',
-    });
+    } as ApiResponse);
   }
 
   // function without output of minutes and distance in meters from A to B
@@ -1561,20 +1571,20 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
         status: 'success',
         message: { time: rep[0], distance: rep[1] },
         function: 'a_to_b_time_distance_walk',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating time and distance',
       function: 'a_to_b_time_distance_walk',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating time and distance',
       function: 'a_to_b_time_distance_walk',
-    });
+    } as ApiResponse);
   }
 }
 
@@ -1585,7 +1595,7 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Request missing lat, lng for starting or ending point',
       function: 'a_to_b_time_distance_bike',
-    });
+    } as ApiResponse);
   }
 
   if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
@@ -1593,7 +1603,7 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
       status: 'failure',
       message: 'Invalid input',
       function: 'a_to_b_time_distance_bike',
-    });
+    } as ApiResponse);
   }
 
   // function without output of minutes and distance in meters from A to B
@@ -1609,20 +1619,20 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
         status: 'success',
         message: { time: rep[0], distance: rep[1] },
         function: 'a_to_b_time_distance_bike',
-      });
+      } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating time and distance',
       function: 'a_to_b_time_distance_bike',
-    });
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
       message: 'Error while calculating time and distance',
       function: 'a_to_b_time_distance_bike',
-    });
+    } as ApiResponse);
   }
 }
 
