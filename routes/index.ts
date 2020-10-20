@@ -1,13 +1,14 @@
 // The routes from the SATF API available at satf.azurewebsites.net/api.
-import { Request, Response } from 'express';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import pg from 'pg';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
 import utils from './utils';
-import { isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords } from './validators';
+import {
+  isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
+} from './validators';
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 

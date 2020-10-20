@@ -88,7 +88,6 @@ export function isValidWhatFreeWords(str:any) {
   return true;
 }
 
-
 /**
  * Check if an input number is a valid latitude coordinate reference.
  * @param {number} str Potential latitude coordinate.
@@ -97,7 +96,7 @@ export function isValidWhatFreeWords(str:any) {
 export function isValidLatitude(lat:any) {
   const number = Number(lat);
   try {
-    if (isNaN(number)) { return false; }
+    if (Number.isNaN(number)) { return false; }
     if (number < -90 || number > 90) { return false; }
     return true;
   } catch {
@@ -113,7 +112,7 @@ export function isValidLatitude(lat:any) {
 export function isValidLongitude(lat:any) {
   const number = Number(lat);
   try {
-    if (isNaN(number)) { return false; }
+    if (Number.isNaN(number)) { return false; }
     if (number < -180 || number > 180) { return false; }
     return true;
   } catch {

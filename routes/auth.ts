@@ -6,8 +6,8 @@
 */
 
 import jwt from 'jsonwebtoken';
-import credentials from './credentials';
 import { Request, Response } from 'express';
+import credentials from './credentials';
 
 export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
   try {
@@ -34,4 +34,4 @@ export default async function auth(req:Request, res:Response, next:Function): Pr
       message: 'User unauthorised or unable to read token.',
     });
   }
-};
+}
