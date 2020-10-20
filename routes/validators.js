@@ -96,7 +96,7 @@ exports.isValidWhatFreeWords = isValidWhatFreeWords;
 function isValidLatitude(lat) {
     var number = Number(lat);
     try {
-        if (isNaN(number)) {
+        if (Number.isNaN(number)) {
             return false;
         }
         if (number < -90 || number > 90) {
@@ -117,7 +117,7 @@ exports.isValidLatitude = isValidLatitude;
 function isValidLongitude(lat) {
     var number = Number(lat);
     try {
-        if (isNaN(number)) {
+        if (Number.isNaN(number)) {
             return false;
         }
         if (number < -180 || number > 180) {

@@ -6,7 +6,10 @@
     "node"
   ],
   "scripts": {
-    "start": "node ./server.js"
+    "start": "node ./server.js",
+    "start:dev": "nodemon ./server.js",
+    "build": "tsc",
+    "watch": "tsc -watch"
   },
   "author": "Casper Fibaek @ NIRAS",
   "license": "Unlicenced for now",

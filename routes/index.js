@@ -39,6 +39,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
+// The routes from the SATF API available at satf.azurewebsites.net/api.
 var express_1 = __importDefault(require("express"));
 var pg_1 = __importDefault(require("pg"));
 var crypto_1 = __importDefault(require("crypto"));

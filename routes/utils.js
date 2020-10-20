@@ -6,7 +6,7 @@ exports.__esModule = true;
 exports["default"] = {
     // Translate between the raster integer values and their urban classes. Works for greater Ghana.
     translateUrbanClasses: function (klass) {
-        if (isNaN(klass)) {
+        if (Number.isNaN(klass)) {
             return 'Unknown';
         }
         if (Number(klass) === 0) {

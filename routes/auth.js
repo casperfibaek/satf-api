@@ -81,4 +81,3 @@ function auth(req, res, next) {
     });
 }
 exports["default"] = auth;
-;
