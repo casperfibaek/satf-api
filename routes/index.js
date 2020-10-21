@@ -46,7 +46,7 @@ var crypto_1 = __importDefault(require("crypto"));
 var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 var auth_1 = __importDefault(require("./auth"));
 var credentials_1 = __importDefault(require("./credentials"));
-var utils_1 = __importDefault(require("./utils"));
+var utils_1 = require("./utils");
 var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
@@ -437,13 +437,13 @@ function urban_status(req, res) {
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: utils_1["default"].translateUrbanClasses(dbResponse.rows[0].urban_status),
+                                message: utils_1.translateUrbanClasses(dbResponse.rows[0].urban_status),
                                 "function": 'urban_status'
                             })];
                     }
                     return [2 /*return*/, res.status(200).json({
                             status: 'success',
-                            message: utils_1["default"].translateUrbanClasses(0),
+                            message: utils_1.translateUrbanClasses(0),
                             "function": 'urban_status'
                         })];
                 case 3:
@@ -489,13 +489,13 @@ function urban_status_simple(req, res) {
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: utils_1["default"].translateUrbanClasses(dbResponse.rows[0].urban_status_simple),
+                                message: utils_1.translateUrbanClasses(dbResponse.rows[0].urban_status_simple),
                                 "function": 'urban_status_simple'
                             })];
                     }
                     return [2 /*return*/, res.status(200).json({
                             status: 'success',
-                            message: utils_1["default"].translateUrbanClasses(0),
+                            message: utils_1.translateUrbanClasses(0),
                             "function": 'urban_status_simple'
                         })];
                 case 3:
@@ -1158,7 +1158,6 @@ function nearest_bank_distance(req, res) {
         });
     });
 }
-// New function - Isochrone walking distance
 function isochrone_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_19;
@@ -1444,7 +1443,8 @@ function create_user(req, res) {
                     if (!req.body.username || !req.body.password || !req.body.confirm) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing username, password or confirmPassword'
+                                message: 'Request missing username, password or confirmPassword',
+                                "function": 'create_user'
                             })];
                     }
                     _a = req.body, username = _a.username, password = _a.password, confirm = _a.confirm;

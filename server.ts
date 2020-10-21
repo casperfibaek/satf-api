@@ -33,6 +33,9 @@ app.use((req, res, next) => {
 app.use(compression());
 
 // Serve
+app.get('/', (req, res) => {
+  res.redirect('https://satfstatic.z6.web.core.windows.net/?page=install');
+});
 app.use('/api', routes);
 
 const port = process.env.PORT || 8080;

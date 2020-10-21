@@ -31,6 +31,9 @@ app.use(function (req, res, next) {
 });
 app.use(compression_1["default"]());
 // Serve
+app.get('/', function (req, res) {
+    res.redirect('https://satfstatic.z6.web.core.windows.net/?page=install');
+});
 app.use('/api', routes_1["default"]);
 var port = process.env.PORT || 8080;
 app.listen(port, function () {
