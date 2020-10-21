@@ -21,7 +21,7 @@ app.use(cookieParser());
 app.use((req, res, next) => {
   // Cors
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, authorization, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
 
   // Nocache
   res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
