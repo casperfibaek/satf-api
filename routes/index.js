@@ -1566,6 +1566,70 @@ function login_user(req, res) {
         });
     });
 }
+function login_user_get(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_27;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.username || !req.query.password) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username or password',
+                                "function": 'login_user'
+                            })];
+                    }
+                    _a = req.query, username = _a.username, password = _a.password;
+                    if (!checkUsername(username)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Username must be between 6-16 characters.',
+                                "function": 'login_user'
+                            })];
+                    }
+                    if (!checkPassword(password)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Password must be between 6-16 characters.',
+                                "function": 'login_user'
+                            })];
+                    }
+                    hashedPassword = getHashedPassword(password);
+                    dbQuery = "\n    UPDATE users\n    SET last_login = CURRENT_TIMESTAMP\n    WHERE \"username\" = '" + username + "' AND \"password\" = '" + hashedPassword + "';\n  ";
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _b.sent();
+                    if (dbResponse.rowCount > 0) {
+                        token = jsonwebtoken_1["default"].sign({ userId: username }, credentials_1["default"].admin_key, { expiresIn: '24h' });
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: 'User Successfully Logged in',
+                                "function": 'login_user',
+                                username: username,
+                                token: token
+                            })];
+                    }
+                    return [2 /*return*/, res.status(401).json({
+                            status: 'failure',
+                            message: 'User not found or unauthorised.',
+                            "function": 'login_user'
+                        })];
+                case 3:
+                    err_27 = _b.sent();
+                    console.log(err_27);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Internal Error while logging user in.',
+                            "function": 'login_user'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function auth_token(token_to_verify) {
     return __awaiter(this, void 0, void 0, function () {
         var userId, token, decodedToken;
@@ -1592,7 +1656,7 @@ function auth_token(token_to_verify) {
 }
 function delete_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_27, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_28;
+        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_28, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_29;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -1636,8 +1700,8 @@ function delete_user(req, res) {
                     }
                     return [3 /*break*/, 6];
                 case 5:
-                    err_27 = _b.sent();
-                    console.log(err_27);
+                    err_28 = _b.sent();
+                    console.log(err_28);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1681,8 +1745,8 @@ function delete_user(req, res) {
                     _b.label = 12;
                 case 12: return [3 /*break*/, 14];
                 case 13:
-                    err_28 = _b.sent();
-                    console.log(err_28);
+                    err_29 = _b.sent();
+                    console.log(err_29);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1700,7 +1764,7 @@ function delete_user(req, res) {
 // Getting time and distance from A to B
 function a_to_b_time_distance_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_29;
+        var dbQuery, dbResponse, rep, err_30;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1739,8 +1803,8 @@ function a_to_b_time_distance_walk(req, res) {
                             "function": 'a_to_b_time_distance_walk'
                         })];
                 case 3:
-                    err_29 = _a.sent();
-                    console.log(err_29);
+                    err_30 = _a.sent();
+                    console.log(err_30);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -1754,7 +1818,7 @@ function a_to_b_time_distance_walk(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_30;
+        var dbQuery, dbResponse, rep, err_31;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1793,8 +1857,8 @@ function a_to_b_time_distance_bike(req, res) {
                             "function": 'a_to_b_time_distance_bike'
                         })];
                 case 3:
-                    err_30 = _a.sent();
-                    console.log(err_30);
+                    err_31 = _a.sent();
+                    console.log(err_31);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -1839,8 +1903,9 @@ router.route('/nearest_bank_distance').get(auth_1["default"], nearest_bank_dista
 router.route('/get_banks').get(auth_1["default"], get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth_1["default"], a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth_1["default"], a_to_b_time_distance_bike);
-router.route('/create_user').post(create_user);
+router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
+router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 // TODO: This should take a post of a JSON object and batch process --> return.

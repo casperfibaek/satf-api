@@ -1430,6 +1430,67 @@ async function login_user(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
+async function login_user_get(req:Request, res:Response) {
+  if (!req.query.username || !req.query.password) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing username or password',
+      function: 'login_user',
+    } as ApiResponse);
+  }
+  const { username, password } = req.query;
+
+  if (!checkUsername(username)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Username must be between 6-16 characters.',
+      function: 'login_user',
+    } as ApiResponse);
+  }
+
+  if (!checkPassword(password)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Password must be between 6-16 characters.',
+      function: 'login_user',
+    } as ApiResponse);
+  }
+
+  const hashedPassword = getHashedPassword(password);
+
+  const dbQuery = `
+    UPDATE users
+    SET last_login = CURRENT_TIMESTAMP
+    WHERE "username" = '${username}' AND "password" = '${hashedPassword}';
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+
+    if (dbResponse.rowCount > 0) {
+      const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      return res.status(200).json({
+        status: 'success',
+        message: 'User Successfully Logged in',
+        function: 'login_user',
+        username,
+        token,
+      } as ApiResponse);
+    }
+    return res.status(401).json({
+      status: 'failure',
+      message: 'User not found or unauthorised.',
+      function: 'login_user',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Internal Error while logging user in.',
+      function: 'login_user',
+    } as ApiResponse);
+  }
+}
 
 async function auth_token(token_to_verify:string) {
   try {
@@ -1672,8 +1733,9 @@ router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
 router.route('/get_banks').get(auth, get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);
-router.route('/create_user').post(create_user);
+router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
+router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
