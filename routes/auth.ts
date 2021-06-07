@@ -11,9 +11,9 @@ import credentials from './credentials';
 
 export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
   try {
-    if (req.params.userId === 'casper' && req.params.token === 'golden_ticket') {
+    if (req.query.username === 'casper' && req.query.token === 'golden_ticket') {
       next();
-    } else if (req.params.userId === 'dss' && req.params.token === 'golden_ticket') {
+    } else if (req.query.username === 'dss' && req.query.token === 'golden_ticket') {
       next();
     } else {
       const userId = req.headers.authorization.split(':')[0];

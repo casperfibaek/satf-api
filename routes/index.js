@@ -50,6 +50,7 @@ var utils_1 = require("./utils");
 var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
+var version = '0.2.1';
 var openLocationCode = pluscodes_1["default"]();
 var router = express_1["default"].Router();
 var pool = new pg_1["default"].Pool(credentials_1["default"]);
@@ -306,13 +307,13 @@ function admin_level_2(req, res) {
         });
     });
 }
-function hello_world(req, res) {
+function api_version(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
             return [2 /*return*/, res.status(200).json({
                     status: 'success',
-                    message: 'Hello World!',
-                    "function": 'hello_world'
+                    message: version,
+                    "function": 'api_version'
                 })];
         });
     });
@@ -878,9 +879,62 @@ function pop_density_isochrone_car(req, res) {
         });
     });
 }
-function nearest_placename(req, res) {
+function nightlights(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_14;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing lat, lng or buffer',
+                                "function": 'nightlights'
+                            })];
+                    }
+                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Invalid input',
+                                "function": 'nightlights'
+                            })];
+                    }
+                    dbQuery = "\n    SELECT avg_timeseries_viirs('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.buffer) + "') as nightlight;\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    console.log(dbResponse.rows);
+                    if (dbResponse.rowCount > 0) {
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: dbResponse.rows[0].nightlight,
+                                "function": 'nightlights'
+                            })];
+                    }
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'nightlights'
+                        })];
+                case 3:
+                    err_14 = _a.sent();
+                    console.log(err_14);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'nightlights'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+function nearest_placename(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dbQuery, dbResponse, err_15;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -918,8 +972,8 @@ function nearest_placename(req, res) {
                             "function": 'nearest_placename'
                         })];
                 case 3:
-                    err_14 = _a.sent();
-                    console.log(err_14);
+                    err_15 = _a.sent();
+                    console.log(err_15);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -932,7 +986,7 @@ function nearest_placename(req, res) {
 }
 function nearest_poi(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_15;
+        var dbQuery, dbResponse, err_16;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -970,8 +1024,8 @@ function nearest_poi(req, res) {
                             "function": 'nearest_poi'
                         })];
                 case 3:
-                    err_15 = _a.sent();
-                    console.log(err_15);
+                    err_16 = _a.sent();
+                    console.log(err_16);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -984,7 +1038,7 @@ function nearest_poi(req, res) {
 }
 function get_banks(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var target, name, dbQuery, dbResponse, returnArray, i, err_16;
+        var target, name, dbQuery, dbResponse, returnArray, i, err_17;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1042,8 +1096,8 @@ function get_banks(req, res) {
                             "function": 'get_banks'
                         })];
                 case 3:
-                    err_16 = _a.sent();
-                    console.log(err_16);
+                    err_17 = _a.sent();
+                    console.log(err_17);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1056,7 +1110,7 @@ function get_banks(req, res) {
 }
 function nearest_bank(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_17;
+        var dbQuery, dbResponse, err_18;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1094,8 +1148,8 @@ function nearest_bank(req, res) {
                             "function": 'nearest_bank'
                         })];
                 case 3:
-                    err_17 = _a.sent();
-                    console.log(err_17);
+                    err_18 = _a.sent();
+                    console.log(err_18);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1108,7 +1162,7 @@ function nearest_bank(req, res) {
 }
 function nearest_bank_distance(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_18;
+        var dbQuery, dbResponse, err_19;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1146,8 +1200,8 @@ function nearest_bank_distance(req, res) {
                             "function": 'nearest_bank_distance'
                         })];
                 case 3:
-                    err_18 = _a.sent();
-                    console.log(err_18);
+                    err_19 = _a.sent();
+                    console.log(err_19);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1160,7 +1214,7 @@ function nearest_bank_distance(req, res) {
 }
 function isochrone_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_19;
+        var dbQuery, dbResponse, err_20;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1198,8 +1252,8 @@ function isochrone_walk(req, res) {
                             "function": 'isochrone_walk'
                         })];
                 case 3:
-                    err_19 = _a.sent();
-                    console.log(err_19);
+                    err_20 = _a.sent();
+                    console.log(err_20);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating isocrone',
@@ -1213,7 +1267,7 @@ function isochrone_walk(req, res) {
 // New Function - Isochrone biking distance
 function isochrone_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_20;
+        var dbQuery, dbResponse, err_21;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1251,8 +1305,8 @@ function isochrone_bike(req, res) {
                             "function": 'isochrone_bike'
                         })];
                 case 3:
-                    err_20 = _a.sent();
-                    console.log(err_20);
+                    err_21 = _a.sent();
+                    console.log(err_21);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating isocrone',
@@ -1266,7 +1320,7 @@ function isochrone_bike(req, res) {
 // New Function - Isochrone car
 function isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_21;
+        var dbQuery, dbResponse, err_22;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1304,8 +1358,8 @@ function isochrone_car(req, res) {
                             "function": 'isochrone_car'
                         })];
                 case 3:
-                    err_21 = _a.sent();
-                    console.log(err_21);
+                    err_22 = _a.sent();
+                    console.log(err_22);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating isocrone',
@@ -1338,37 +1392,11 @@ function checkUsername(username) {
 }
 function usernameExists(username) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_22;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "'\n    LIMIT 1;\n  ";
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
-                case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        return [2 /*return*/, true];
-                    }
-                    return [2 /*return*/, false];
-                case 3:
-                    err_22 = _a.sent();
-                    console.log(err_22);
-                    return [2 /*return*/, false];
-                case 4: return [2 /*return*/];
-            }
-        });
-    });
-}
-function verifyUser(username, password) {
-    return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_23;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "' and \"password\" = '" + password + "'\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "'\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1388,9 +1416,35 @@ function verifyUser(username, password) {
         });
     });
 }
+function verifyUser(username, password) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dbQuery, dbResponse, err_24;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "' and \"password\" = '" + password + "'\n    LIMIT 1;\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    if (dbResponse.rowCount > 0) {
+                        return [2 /*return*/, true];
+                    }
+                    return [2 /*return*/, false];
+                case 3:
+                    err_24 = _a.sent();
+                    console.log(err_24);
+                    return [2 /*return*/, false];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function insertUser(username, password) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, err_24;
+        var dbQuery, err_25;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1403,8 +1457,8 @@ function insertUser(username, password) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 3:
-                    err_24 = _a.sent();
-                    console.log(err_24);
+                    err_25 = _a.sent();
+                    console.log(err_25);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1413,7 +1467,7 @@ function insertUser(username, password) {
 }
 function deleteUser(username) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, err_25;
+        var dbQuery, err_26;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1426,8 +1480,8 @@ function deleteUser(username) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 3:
-                    err_25 = _a.sent();
-                    console.log(err_25);
+                    err_26 = _a.sent();
+                    console.log(err_26);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1504,7 +1558,7 @@ function create_user(req, res) {
 }
 function login_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_26;
+        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_27;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -1516,70 +1570,6 @@ function login_user(req, res) {
                             })];
                     }
                     _a = req.body, username = _a.username, password = _a.password;
-                    if (!checkUsername(username)) {
-                        return [2 /*return*/, res.status(400).json({
-                                status: 'failure',
-                                message: 'Username must be between 6-16 characters.',
-                                "function": 'login_user'
-                            })];
-                    }
-                    if (!checkPassword(password)) {
-                        return [2 /*return*/, res.status(400).json({
-                                status: 'failure',
-                                message: 'Password must be between 6-16 characters.',
-                                "function": 'login_user'
-                            })];
-                    }
-                    hashedPassword = getHashedPassword(password);
-                    dbQuery = "\n    UPDATE users\n    SET last_login = CURRENT_TIMESTAMP\n    WHERE \"username\" = '" + username + "' AND \"password\" = '" + hashedPassword + "';\n  ";
-                    _b.label = 1;
-                case 1:
-                    _b.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
-                case 2:
-                    dbResponse = _b.sent();
-                    if (dbResponse.rowCount > 0) {
-                        token = jsonwebtoken_1["default"].sign({ userId: username }, credentials_1["default"].admin_key, { expiresIn: '24h' });
-                        return [2 /*return*/, res.status(200).json({
-                                status: 'success',
-                                message: 'User Successfully Logged in',
-                                "function": 'login_user',
-                                username: username,
-                                token: token
-                            })];
-                    }
-                    return [2 /*return*/, res.status(401).json({
-                            status: 'failure',
-                            message: 'User not found or unauthorised.',
-                            "function": 'login_user'
-                        })];
-                case 3:
-                    err_26 = _b.sent();
-                    console.log(err_26);
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Internal Error while logging user in.',
-                            "function": 'login_user'
-                        })];
-                case 4: return [2 /*return*/];
-            }
-        });
-    });
-}
-function login_user_get(req, res) {
-    return __awaiter(this, void 0, void 0, function () {
-        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_27;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    if (!req.query.username || !req.query.password) {
-                        return [2 /*return*/, res.status(400).json({
-                                status: 'failure',
-                                message: 'Request missing username or password',
-                                "function": 'login_user'
-                            })];
-                    }
-                    _a = req.query, username = _a.username, password = _a.password;
                     if (!checkUsername(username)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
@@ -1630,6 +1620,71 @@ function login_user_get(req, res) {
         });
     });
 }
+function login_user_get(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var username, password, hashedPassword, dbQuery, dbResponse, token, err_28;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.username || !req.query.password) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username or password',
+                                "function": 'login_user'
+                            })];
+                    }
+                    username = String(req.query.username);
+                    password = String(req.query.password);
+                    if (!checkUsername(username)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Username must be between 6-16 characters.',
+                                "function": 'login_user'
+                            })];
+                    }
+                    if (!checkPassword(password)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Password must be between 6-16 characters.',
+                                "function": 'login_user'
+                            })];
+                    }
+                    hashedPassword = getHashedPassword(password);
+                    dbQuery = "\n    UPDATE users\n    SET last_login = CURRENT_TIMESTAMP\n    WHERE \"username\" = '" + username + "' AND \"password\" = '" + hashedPassword + "';\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    if (dbResponse.rowCount > 0) {
+                        token = jsonwebtoken_1["default"].sign({ userId: username }, credentials_1["default"].admin_key, { expiresIn: '24h' });
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: 'User Successfully Logged in',
+                                "function": 'login_user',
+                                username: username,
+                                token: token
+                            })];
+                    }
+                    return [2 /*return*/, res.status(401).json({
+                            status: 'failure',
+                            message: 'User not found or unauthorised.',
+                            "function": 'login_user'
+                        })];
+                case 3:
+                    err_28 = _a.sent();
+                    console.log(err_28);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Internal Error while logging user in.',
+                            "function": 'login_user'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function auth_token(token_to_verify) {
     return __awaiter(this, void 0, void 0, function () {
         var userId, token, decodedToken;
@@ -1656,7 +1711,7 @@ function auth_token(token_to_verify) {
 }
 function delete_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_28, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_29;
+        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_29, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_30;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -1700,8 +1755,8 @@ function delete_user(req, res) {
                     }
                     return [3 /*break*/, 6];
                 case 5:
-                    err_28 = _b.sent();
-                    console.log(err_28);
+                    err_29 = _b.sent();
+                    console.log(err_29);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1745,8 +1800,8 @@ function delete_user(req, res) {
                     _b.label = 12;
                 case 12: return [3 /*break*/, 14];
                 case 13:
-                    err_29 = _b.sent();
-                    console.log(err_29);
+                    err_30 = _b.sent();
+                    console.log(err_30);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1764,7 +1819,7 @@ function delete_user(req, res) {
 // Getting time and distance from A to B
 function a_to_b_time_distance_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_30;
+        var dbQuery, dbResponse, rep, err_31;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1803,8 +1858,8 @@ function a_to_b_time_distance_walk(req, res) {
                             "function": 'a_to_b_time_distance_walk'
                         })];
                 case 3:
-                    err_30 = _a.sent();
-                    console.log(err_30);
+                    err_31 = _a.sent();
+                    console.log(err_31);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -1818,7 +1873,7 @@ function a_to_b_time_distance_walk(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_31;
+        var dbQuery, dbResponse, rep, err_32;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1857,8 +1912,8 @@ function a_to_b_time_distance_bike(req, res) {
                             "function": 'a_to_b_time_distance_bike'
                         })];
                 case 3:
-                    err_31 = _a.sent();
-                    console.log(err_31);
+                    err_32 = _a.sent();
+                    console.log(err_32);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -1875,7 +1930,7 @@ function error_log(req, res) {
     res.status(200).send();
 }
 router.route('/').get(auth_1["default"], function (req, res) { return res.send('home/api'); });
-router.route('/hello_world').get(hello_world);
+router.route('/api_version').get(api_version);
 router.route('/latlng_to_what3words').get(auth_1["default"], latlng_to_what3words);
 router.route('/what3words_to_latlng').get(auth_1["default"], what3words_to_latlng);
 router.route('/latlng_to_pluscode').get(auth_1["default"], latlng_to_pluscode);
@@ -1889,6 +1944,7 @@ router.route('/pop_density_isochrone_car').get(auth_1["default"], pop_density_is
 router.route('/isochrone_walk').get(auth_1["default"], isochrone_walk);
 router.route('/isochrone_bike').get(auth_1["default"], isochrone_bike);
 router.route('/isochrone_car').get(auth_1["default"], isochrone_car);
+router.route('/nightlights').get(auth_1["default"], nightlights);
 router.route('/population_density_buffer').get(auth_1["default"], population_density_buffer);
 router.route('/urban_status').get(auth_1["default"], urban_status);
 router.route('/urban_status_simple').get(auth_1["default"], urban_status_simple);

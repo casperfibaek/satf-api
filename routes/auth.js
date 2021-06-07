@@ -52,10 +52,10 @@ function auth(req, res, next) {
         var userId, token, decodedToken;
         return __generator(this, function (_a) {
             try {
-                if (req.params.userId === 'casper' && req.params.token === 'golden_ticket') {
+                if (req.query.username === 'casper' && req.query.token === 'golden_ticket') {
                     next();
                 }
-                else if (req.params.userId === 'dss' && req.params.token === 'golden_ticket') {
+                else if (req.query.username === 'dss' && req.query.token === 'golden_ticket') {
                     next();
                 }
                 else {

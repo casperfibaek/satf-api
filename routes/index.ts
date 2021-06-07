@@ -12,6 +12,8 @@ import {
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 
+const version = '0.2.1';
+
 interface ApiResponse {
   status: 'failure' |'success',
   message: any,
@@ -259,11 +261,11 @@ async function admin_level_2(req:Request, res:Response) {
   }
 }
 
-async function hello_world(req:Request, res:Response) {
+async function api_version(req:Request, res:Response) {
   return res.status(200).json({
     status: 'success',
-    message: 'Hello World!',
-    function: 'hello_world',
+    message: version,
+    function: 'api_version',
   } as ApiResponse);
 }
 
@@ -799,6 +801,51 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
       status: 'failure',
       message: 'Error encountered on server',
       function: 'pop_density_isochrone_car',
+    } as ApiResponse);
+  }
+}
+
+async function nightlights(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng or buffer',
+      function: 'nightlights',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'nightlights',
+    } as ApiResponse);
+  }
+  const dbQuery = `
+    SELECT avg_timeseries_viirs('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as nightlight;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    console.log(dbResponse.rows);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].nightlight,
+        function: 'nightlights',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nightlights',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nightlights',
     } as ApiResponse);
   }
 }
@@ -1438,7 +1485,9 @@ async function login_user_get(req:Request, res:Response) {
       function: 'login_user',
     } as ApiResponse);
   }
-  const { username, password } = req.query;
+
+  const username = String(req.query.username);
+  const password = String(req.query.password);
 
   if (!checkUsername(username)) {
     return res.status(400).json({
@@ -1705,7 +1754,7 @@ function error_log(req:Request, res:Response) {
 
 router.route('/').get(auth, (req:Request, res:Response) => res.send('home/api'));
 
-router.route('/hello_world').get(hello_world);
+router.route('/api_version').get(api_version);
 router.route('/latlng_to_what3words').get(auth, latlng_to_what3words);
 router.route('/what3words_to_latlng').get(auth, what3words_to_latlng);
 router.route('/latlng_to_pluscode').get(auth, latlng_to_pluscode);
@@ -1719,6 +1768,7 @@ router.route('/pop_density_isochrone_car').get(auth, pop_density_isochrone_car);
 router.route('/isochrone_walk').get(auth, isochrone_walk);
 router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
+router.route('/nightlights').get(auth, nightlights);
 router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);

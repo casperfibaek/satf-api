@@ -1,6 +1,5 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import bodyParser from 'body-parser';
 import logger from 'morgan';
 import compression from 'compression';
 
@@ -13,12 +12,11 @@ const app = express();
 // Middleware
 app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Set headers
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   // Cors
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');

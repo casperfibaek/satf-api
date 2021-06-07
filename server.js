@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 exports.__esModule = true;
 var express_1 = __importDefault(require("express"));
 var cookie_parser_1 = __importDefault(require("cookie-parser"));
-var body_parser_1 = __importDefault(require("body-parser"));
 var morgan_1 = __importDefault(require("morgan"));
 var compression_1 = __importDefault(require("compression"));
 // Custom routes
@@ -15,11 +14,10 @@ var app = express_1["default"]();
 // Middleware
 app.use(morgan_1["default"]('dev'));
 app.use(express_1["default"].json());
-app.use(express_1["default"].urlencoded({ extended: false }));
-app.use(body_parser_1["default"].urlencoded({ extended: true }));
+app.use(express_1["default"].urlencoded({ extended: true }));
 app.use(cookie_parser_1["default"]());
 // Set headers
-app.use(function (req, res, next) {
+app.use(function (_req, res, next) {
     // Cors
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
