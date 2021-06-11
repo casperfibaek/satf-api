@@ -1924,6 +1924,60 @@ function a_to_b_time_distance_bike(req, res) {
         });
     });
 }
+// A to B Biking function
+function a_to_b_time_distance_car(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dbQuery, dbResponse, rep, err_33;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing lat, lng for starting or ending point',
+                                "function": 'a_to_b_time_distance_car'
+                            })];
+                    }
+                    if (!validators_1.isValidLatitude(req.query.lat1) || !validators_1.isValidLatitude(req.query.lng1) || !validators_1.isValidLatitude(req.query.lat2) || !validators_1.isValidLatitude(req.query.lng2)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Invalid input',
+                                "function": 'a_to_b_time_distance_car'
+                            })];
+                    }
+                    dbQuery = "\n    SELECT pgr_timeDist_car('" + req.query.lng1 + "', '" + req.query.lat1 + "', '" + req.query.lng2 + "', '" + req.query.lat2 + "');\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    if (dbResponse.rowCount > 0) {
+                        rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: { time: rep[0], distance: rep[1] },
+                                "function": 'a_to_b_time_distance_car'
+                            })];
+                    }
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error while calculating time and distance',
+                            "function": 'a_to_b_time_distance_car'
+                        })];
+                case 3:
+                    err_33 = _a.sent();
+                    console.log(err_33);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error while calculating time and distance',
+                            "function": 'a_to_b_time_distance_car'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function error_log(req, res) {
     var body = req.body;
     console.log(body);
@@ -1959,6 +2013,7 @@ router.route('/nearest_bank_distance').get(auth_1["default"], nearest_bank_dista
 router.route('/get_banks').get(auth_1["default"], get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth_1["default"], a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth_1["default"], a_to_b_time_distance_bike);
+router.route('/a_to_b_time_distance_car').get(auth_1["default"], a_to_b_time_distance_car);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);

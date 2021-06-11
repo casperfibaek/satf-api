@@ -1746,6 +1746,54 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
   }
 }
 
+// A to B Biking function
+async function a_to_b_time_distance_car(req:Request, res:Response) {
+  if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng for starting or ending point',
+      function: 'a_to_b_time_distance_car',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'a_to_b_time_distance_car',
+    } as ApiResponse);
+  }
+
+  // function without output of minutes and distance in meters from A to B
+  const dbQuery = `
+    SELECT pgr_timeDist_car('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+      return res.status(200).json({
+        status: 'success',
+        message: { time: rep[0], distance: rep[1] },
+        function: 'a_to_b_time_distance_car',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error while calculating time and distance',
+      function: 'a_to_b_time_distance_car',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error while calculating time and distance',
+      function: 'a_to_b_time_distance_car',
+    } as ApiResponse);
+  }
+}
+
 function error_log(req:Request, res:Response) {
   const { body } = req;
   console.log(body);
@@ -1783,6 +1831,7 @@ router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
 router.route('/get_banks').get(auth, get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);
+router.route('/a_to_b_time_distance_car').get(auth, a_to_b_time_distance_car);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
