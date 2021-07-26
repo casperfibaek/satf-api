@@ -827,7 +827,6 @@ async function nightlights(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse.rows);
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -846,6 +845,50 @@ async function nightlights(req:Request, res:Response) {
       status: 'failure',
       message: 'Error encountered on server',
       function: 'nightlights',
+    } as ApiResponse);
+  }
+}
+
+async function demography(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng or buffer',
+      function: 'demography',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'demography',
+    } as ApiResponse);
+  }
+  const dbQuery = `
+    SELECT demography('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as demography;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].demography,
+        function: 'demography',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'demography',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'demography',
     } as ApiResponse);
   }
 }
@@ -1817,6 +1860,7 @@ router.route('/isochrone_walk').get(auth, isochrone_walk);
 router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
+router.route('/demography').get(auth, demography);
 router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);
