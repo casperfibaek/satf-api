@@ -12,7 +12,7 @@ import {
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 
-const version = '0.2.1';
+const version = '0.2.2';
 
 interface ApiResponse {
   status: 'failure' |'success',
