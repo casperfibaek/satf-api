@@ -34,4 +34,4 @@ Running at http://satf-api.azurewebsites.net/
 
 # Building:
 
-    1. Run npm run build (requires typescript installed globally.)
+    1. Run npm run build (requires typescript installed globally)
