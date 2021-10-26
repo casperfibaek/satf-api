@@ -51,7 +51,7 @@ var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
 var version = '0.2.1';
-var openLocationCode = pluscodes_1["default"]();
+var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
 var pool = new pg_1["default"].Pool(credentials_1["default"]);
 function latlng_to_what3words(req, res) {
@@ -64,7 +64,7 @@ function latlng_to_what3words(req, res) {
                         "function": 'latlng_to_what3words'
                     })];
             }
-            if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+            if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                 return [2 /*return*/, res.status(400).json({
                         status: 'failure',
                         message: 'Invalid input',
@@ -100,7 +100,7 @@ function what3words_to_latlng(req, res) {
                         "function": 'what3words_to_latlng'
                     })];
             }
-            if (!validators_1.isValidWhatFreeWords(req.query.words)) {
+            if (!(0, validators_1.isValidWhatFreeWords)(req.query.words)) {
                 return [2 /*return*/, res.status(400).json({
                         status: 'failure',
                         message: 'Invalid what3words input',
@@ -137,7 +137,7 @@ function latlng_to_pluscode(req, res) {
                         "function": 'latlng_to_pluscode'
                     })];
             }
-            if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+            if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                 return [2 /*return*/, res.status(400).json({
                         status: 'failure',
                         message: 'Invalid input',
@@ -176,7 +176,7 @@ function pluscode_to_latlng(req, res) {
                     })];
             }
             pluscode = String(req.query.code).replace(' ', '+');
-            if (!validators_1.isValidPluscode(pluscode)) {
+            if (!(0, validators_1.isValidPluscode)(pluscode)) {
                 return [2 /*return*/, res.status(400).json({
                         status: 'failure',
                         message: 'Invalid pluscode input',
@@ -216,7 +216,7 @@ function admin_level_1(req, res) {
                                 "function": 'admin_level_1'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -268,7 +268,7 @@ function admin_level_2(req, res) {
                                 "function": 'admin_level_2'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -421,7 +421,7 @@ function urban_status(req, res) {
                                 "function": 'urban_status'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -438,13 +438,13 @@ function urban_status(req, res) {
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: utils_1.translateUrbanClasses(dbResponse.rows[0].urban_status),
+                                message: (0, utils_1.translateUrbanClasses)(dbResponse.rows[0].urban_status),
                                 "function": 'urban_status'
                             })];
                     }
                     return [2 /*return*/, res.status(200).json({
                             status: 'success',
-                            message: utils_1.translateUrbanClasses(0),
+                            message: (0, utils_1.translateUrbanClasses)(0),
                             "function": 'urban_status'
                         })];
                 case 3:
@@ -473,7 +473,7 @@ function urban_status_simple(req, res) {
                                 "function": 'urban_status_simple'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -490,13 +490,13 @@ function urban_status_simple(req, res) {
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: utils_1.translateUrbanClasses(dbResponse.rows[0].urban_status_simple),
+                                message: (0, utils_1.translateUrbanClasses)(dbResponse.rows[0].urban_status_simple),
                                 "function": 'urban_status_simple'
                             })];
                     }
                     return [2 /*return*/, res.status(200).json({
                             status: 'success',
-                            message: utils_1.translateUrbanClasses(0),
+                            message: (0, utils_1.translateUrbanClasses)(0),
                             "function": 'urban_status_simple'
                         })];
                 case 3:
@@ -525,7 +525,7 @@ function population_density_buffer(req, res) {
                                 "function": 'population_density_buffer'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -577,7 +577,7 @@ function population_density_walk(req, res) {
                                 "function": 'population_density_walk'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -629,7 +629,7 @@ function population_density_bike(req, res) {
                                 "function": 'population_density_bike'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -681,7 +681,7 @@ function population_density_car(req, res) {
                                 "function": 'population_density_car'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -734,7 +734,7 @@ function pop_density_isochrone_walk(req, res) {
                                 "function": 'pop_density_isochrone_walk'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -787,7 +787,7 @@ function pop_density_isochrone_bike(req, res) {
                                 "function": 'pop_density_isochrone_bike'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -840,7 +840,7 @@ function pop_density_isochrone_car(req, res) {
                                 "function": 'pop_density_isochrone_car'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -892,7 +892,7 @@ function nightlights(req, res) {
                                 "function": 'nightlights'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -944,7 +944,7 @@ function demography(req, res) {
                                 "function": 'demography'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -996,7 +996,7 @@ function nearest_placename(req, res) {
                                 "function": 'nearest_placename'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1048,7 +1048,7 @@ function nearest_poi(req, res) {
                                 "function": 'nearest_poi'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1172,7 +1172,7 @@ function nearest_bank(req, res) {
                                 "function": 'nearest_bank'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1224,7 +1224,7 @@ function nearest_bank_distance(req, res) {
                                 "function": 'nearest_bank_distance'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLongitude(req.query.lng)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1276,7 +1276,7 @@ function isochrone_walk(req, res) {
                                 "function": 'isochrone_walk'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1329,7 +1329,7 @@ function isochrone_bike(req, res) {
                                 "function": 'isochrone_bike'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1382,7 +1382,7 @@ function isochrone_car(req, res) {
                                 "function": 'isochrone_car'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat) || !validators_1.isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1881,7 +1881,7 @@ function a_to_b_time_distance_walk(req, res) {
                                 "function": 'a_to_b_time_distance_walk'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat1) || !validators_1.isValidLatitude(req.query.lng1) || !validators_1.isValidLatitude(req.query.lat2) || !validators_1.isValidLatitude(req.query.lng2)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat1) || !(0, validators_1.isValidLatitude)(req.query.lng1) || !(0, validators_1.isValidLatitude)(req.query.lat2) || !(0, validators_1.isValidLatitude)(req.query.lng2)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1935,7 +1935,7 @@ function a_to_b_time_distance_bike(req, res) {
                                 "function": 'a_to_b_time_distance_bike'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat1) || !validators_1.isValidLatitude(req.query.lng1) || !validators_1.isValidLatitude(req.query.lat2) || !validators_1.isValidLatitude(req.query.lng2)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat1) || !(0, validators_1.isValidLatitude)(req.query.lng1) || !(0, validators_1.isValidLatitude)(req.query.lat2) || !(0, validators_1.isValidLatitude)(req.query.lng2)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
@@ -1989,7 +1989,7 @@ function a_to_b_time_distance_car(req, res) {
                                 "function": 'a_to_b_time_distance_car'
                             })];
                     }
-                    if (!validators_1.isValidLatitude(req.query.lat1) || !validators_1.isValidLatitude(req.query.lng1) || !validators_1.isValidLatitude(req.query.lat2) || !validators_1.isValidLatitude(req.query.lng2)) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat1) || !(0, validators_1.isValidLatitude)(req.query.lng1) || !(0, validators_1.isValidLatitude)(req.query.lat2) || !(0, validators_1.isValidLatitude)(req.query.lng2)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
