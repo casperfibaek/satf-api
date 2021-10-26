@@ -8,7 +8,7 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import credentials from './credentials';
-
+import function_levels from './function_levels'
 export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
   try {
     if (req.query.username === 'casper' && req.query.token === 'golden_ticket') {
@@ -18,6 +18,9 @@ export default async function auth(req:Request, res:Response, next:Function): Pr
     } else {
       const userId = req.headers.authorization.split(':')[0];
       const token = req.headers.authorization.split(':')[1];
+
+      ///TODO add user level of admin
+
       const decodedToken:any = jwt.verify(token, credentials.admin_key);
 
       if (userId === decodedToken.userId) {
