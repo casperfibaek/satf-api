@@ -10,12 +10,12 @@ var compression_1 = __importDefault(require("compression"));
 // Custom routes
 var routes_1 = __importDefault(require("./routes"));
 // Define app
-var app = express_1["default"]();
+var app = (0, express_1["default"])();
 // Middleware
-app.use(morgan_1["default"]('dev'));
+app.use((0, morgan_1["default"])('dev'));
 app.use(express_1["default"].json());
 app.use(express_1["default"].urlencoded({ extended: true }));
-app.use(cookie_parser_1["default"]());
+app.use((0, cookie_parser_1["default"])());
 // Set headers
 app.use(function (_req, res, next) {
     // Cors
@@ -27,7 +27,7 @@ app.use(function (_req, res, next) {
     res.header('Pragma', 'no-cache');
     next();
 });
-app.use(compression_1["default"]());
+app.use((0, compression_1["default"])());
 // Serve
 app.get('/', function (req, res) {
     res.redirect('https://satfstatic.z6.web.core.windows.net/?page=install');
