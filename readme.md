@@ -2,7 +2,7 @@
 
 This is the API for the SATF tool and communication with the database.
 
-The API is built using Typescript and ExpressJS. 
+The API is built using Typescript and ExpressJS.
 
 _Author_: **Casper Fibaek**
 
@@ -24,7 +24,6 @@ Holds all the routes (endpoints) used by the API. Everything uses the async/awai
 
 A range of validators for the input data. Eg. test if input is really a coordinate.
 
-
 # Installation
 
 Steps for installation:
@@ -34,5 +33,5 @@ Running at http://satf-api.azurewebsites.net/
     2. Deploy the server to azure using the app-service functionality.
 
 # Building:
-    1. Run npm run build (requires typescript installed globally)
 
+    1. Run npm run build (requires typescript installed globally.)
