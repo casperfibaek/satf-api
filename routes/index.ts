@@ -13,7 +13,7 @@ import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 import { callbackify } from 'util';
 
-const version = '0.2.1';
+const version = '0.2.2';
 
 interface ApiResponse {
   status: 'failure' |'success',
