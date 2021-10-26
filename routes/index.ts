@@ -11,6 +11,7 @@ import {
 } from './validators';
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
+import { callbackify } from 'util';
 
 const version = '0.2.1';
 
@@ -1463,7 +1464,7 @@ async function login_user(req:Request, res:Response) {
   if (!req.body.username || !req.body.password) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing username or password',
+      message: 'Request missing username or password!!!!!!!!',
       function: 'login_user',
     } as ApiResponse);
   }
@@ -1535,7 +1536,7 @@ async function login_user_get(req:Request, res:Response) {
   if (!checkUsername(username)) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Username must be between 6-16 characters.',
+      message: 'Username must be between 6-16 characters!!!!!.',
       function: 'login_user',
     } as ApiResponse);
   }
@@ -1543,7 +1544,7 @@ async function login_user_get(req:Request, res:Response) {
   if (!checkPassword(password)) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Password must be between 6-16 characters.',
+      message: 'Password must be between 6-16 characters!!!!.',
       function: 'login_user',
     } as ApiResponse);
   }
@@ -1837,6 +1838,132 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
   }
 }
 
+// Get user geometries
+// old function definition
+// app.get("/api/v1/geometries/:user_id", async (req, res) => {
+  async function get_user_geometries(req:Request, res:Response) {
+
+    console.log('$$$$$$$@')
+    // const dbQuery = 
+    //   `SELECT geometry_id::INTEGER, ST_AsGeoJSON(geom) as geom FROM geometries WHERE user_id = ${req.params.user_id}",
+    //   `
+    const { user_id } = req.params
+    const dbQuery = 
+      `SELECT ST_AsGeoJSON(g.geom) as geom, g.layer_id::INTEGER as layer_id, g.user_id::INTEGER as user_id, l.name as layer_name, g.geom_id as geom_id
+      FROM user_geometries g
+      LEFT JOIN user_layers l ON g.layer_id=l.layer_id
+      WHERE l.user_id = ${user_id}
+      ORDER BY g.layer_id`
+    // console.log(dbQuery)
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    console.log(dbResponse)
+    res.status(200).json({
+      status: "success",
+      results: dbResponse.rows,
+    });
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+// Put user geometries
+// app.put("/api/v1/geometries/:user_id", async (req, res) => {
+
+
+async function send_to_DB(req:Request, res:Response) {
+  console.log("submit geometriess attempted serverside");
+  // console.log(req.body.featureCollection)
+  // console.log(req.body.name)
+
+  ////// INFO PROVIDED
+  // user_id
+  // current layer ID and curren layer name
+  // all points in current layer
+
+
+  const values = []
+
+  const { featureCollection, name: layerName } = req.body
+  
+  featureCollection.features.forEach(x=> {
+    
+    const { properties: { id, context_info }, geometry } = x
+    console.log(id, context_info, geometry, layerName)
+
+    //// either collate to big database update push thing
+
+    //// send to DB one at a time
+    values.push({id, context_info, geometry, layerName})
+
+  }
+  
+  )
+  // console.log(req.params.user_id)
+  // console.log(req.body)
+
+  // let features = ''
+  // const geom_id = 
+  // featureCollection.features.forEach(x=>{
+
+
+
+  //   const string_values = ((geom_id, user_id, x.geom.strinfia())
+
+  // })
+
+
+  // try {
+  //     const deleteResults = db.query(
+  //       `INSERT INTO geometries (geom_id, user_id, geom) values ${string_values}`, 
+  //       [user_id]
+  //     );
+
+
+
+
+  res.status(200).json({
+        status: "success",
+        results: "hi",
+      });
+} 
+  // const { user_id } = req.params;
+  // const { geometries } = req.body;
+
+  // let temp = [];
+  // geometries.forEach((geom) => {
+  //   const { geometry_id, geometry } = geom;
+  //   /// formatting away double quotes. PSQL seems to only accept single quotes around the geojson
+  //   const formattedGeometry = "'" + geometry + "'";
+  //   temp.push(
+  //     `(${geometry_id}, ${user_id}, ST_GeomFromGeoJSON(${formattedGeometry}))`
+  //   );
+  // });
+  // const updated_geometries = temp.join(",");
+
+  // try {
+  //   const deleteResults = db.query(
+  //     "DELETE FROM geometries WHERE user_id = $1", 
+  //     [user_id]
+  //   );
+
+  //   const update_geoms =
+  //     "INSERT INTO geometries (geometry_id, user_id, geom) VALUES " + updated_geometries;
+  //   console.log(text);
+
+  //   const results = await db.query(update_geoms);
+
+  //   res.status(200).json({
+  //     status: "success",
+  //     results: results.rows[0],
+  //   });
+  // } catch (err) {
+  //   console.log(err);
+  // }
+// };
+
+
+
 function error_log(req:Request, res:Response) {
   const { body } = req;
   console.log(body);
@@ -1881,6 +2008,14 @@ router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
+
+
+router.route('/send_to_DB/:user_id').post(send_to_DB);
+router.route('/get_user_geometries/:user_id').get(get_user_geometries);
+
+ 
+
+
 
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth, (req:Request, res:Response) => res.send('home/api/batch'));

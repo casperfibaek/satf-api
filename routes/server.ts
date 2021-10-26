@@ -4,7 +4,7 @@ import logger from 'morgan';
 import compression from 'compression';
 
 // Custom routes
-import routes from './routes';
+import routes from '.';
 
 // Define app
 const app = express();
