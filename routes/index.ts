@@ -1838,6 +1838,143 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
   }
 }
 
+//network coverage functions
+//1. gets coverage network from both data sources (MCE and OCI)
+
+async function network_coverage(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng',
+      function: 'network_coverage',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'network_coverage',
+    } as ApiResponse);
+  }
+  const dbQuery = `
+    SELECT network_coverage('${req.query.lng}', '${req.query.lat}') as coverage;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].coverage,
+        function: 'network_coverage',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'network_coverage',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'network_coverage',
+    } as ApiResponse);
+  }
+}
+
+// 2. Gets data coverage from OCI source 
+async function oci_coverage(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  }
+  const dbQuery = `
+    SELECT oci_coverage('${req.query.lng}', '${req.query.lat}') as coverage;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].coverage,
+        function: 'oci_coverage',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  }
+}
+
+// 3. Gets data coverage from MCE source
+async function mce_coverage(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  }
+  const dbQuery = `
+    SELECT mce_coverage('${req.query.lng}', '${req.query.lat}') as coverage;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].coverage,
+        function: 'mce_coverage',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  }
+}
+
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
@@ -2003,6 +2140,9 @@ router.route('/get_banks').get(auth, get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);
 router.route('/a_to_b_time_distance_car').get(auth, a_to_b_time_distance_car);
+router.route('/network_coverage').get(auth, network_coverage);
+router.route('/oci_coverage').get(auth, oci_coverage);
+router.route('/mce_coverage').get(auth, mce_coverage);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
