@@ -13,6 +13,8 @@ import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 import { callbackify } from 'util';
 
+const axios = require("axios");
+
 const version = '0.2.2';
 
 interface ApiResponse {
@@ -1975,6 +1977,69 @@ async function mce_coverage(req: Request, res: Response) {
   }
 }
 
+// get weather forecats for 7 days from Open Weather api - string output for now
+
+async function get_forecast(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "get_forecast",
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "get_forecast",
+    } as ApiResponse);
+  }
+  var key = "058aa5a4622d21864fcbafbb8c28a128";
+  try {
+    const response = await axios(
+      "https://api.openweathermap.org/data/2.5/onecall?lat=" +
+        req.query.lat +
+        "&lon=" +
+        req.query.lng + 
+        "&exclude=current,minutely,hourly" +
+        "&units=metric&appid=" +
+        key
+    );
+    const data = await response.data;
+
+    const format_time = (s) => new Date(s * 1e3).toISOString().slice(0,-14);
+
+    const list_forecast = data.daily.map(( props ) => {
+      const { weather, dt, temp, humidity, rain, clouds } = props
+      return {
+        date: format_time(dt),
+        description: weather[0].description,
+        temp_min: temp.min, 
+        temp_max: temp.max,
+        humidity,
+        rain,
+        clouds
+
+      } 
+    }); 
+
+    return res.status(200).json({
+      status: "success",
+      message: list_forecast,
+      function: "get_forecast",
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: "failure",
+      message: "Error encountered on server",
+      function: "get_forecast",
+    } as ApiResponse);
+  }
+}
+
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
@@ -2143,6 +2208,7 @@ router.route('/a_to_b_time_distance_car').get(auth, a_to_b_time_distance_car);
 router.route('/network_coverage').get(auth, network_coverage);
 router.route('/oci_coverage').get(auth, oci_coverage);
 router.route('/mce_coverage').get(auth, mce_coverage);
+router.route('/get_forecast').get(auth, get_forecast);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);

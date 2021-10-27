@@ -50,6 +50,7 @@ var utils_1 = require("./utils");
 var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
+var axios = require("axios");
 var version = '0.2.2';
 var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
@@ -2189,12 +2190,80 @@ function mce_coverage(req, res) {
         });
     });
 }
+// get weather forecats for 7 days from Open Weather api - string output for now
+function get_forecast(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var key, response, data, format_time_1, list_forecast, err_38;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "get_forecast"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "get_forecast"
+                            })];
+                    }
+                    key = "058aa5a4622d21864fcbafbb8c28a128";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 4, , 5]);
+                    return [4 /*yield*/, axios("https://api.openweathermap.org/data/2.5/onecall?lat=" +
+                            req.query.lat +
+                            "&lon=" +
+                            req.query.lng +
+                            "&exclude=current,minutely,hourly" +
+                            "&units=metric&appid=" +
+                            key)];
+                case 2:
+                    response = _a.sent();
+                    return [4 /*yield*/, response.data];
+                case 3:
+                    data = _a.sent();
+                    format_time_1 = function (s) { return new Date(s * 1e3).toISOString().slice(0, -14); };
+                    list_forecast = data.daily.map(function (props) {
+                        var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds;
+                        return {
+                            date: format_time_1(dt),
+                            description: weather[0].description,
+                            temp_min: temp.min,
+                            temp_max: temp.max,
+                            humidity: humidity,
+                            rain: rain,
+                            clouds: clouds
+                        };
+                    });
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: list_forecast,
+                            "function": "get_forecast"
+                        })];
+                case 4:
+                    err_38 = _a.sent();
+                    console.log(err_38);
+                    return [2 /*return*/, res.status(500).json({
+                            status: "failure",
+                            message: "Error encountered on server",
+                            "function": "get_forecast"
+                        })];
+                case 5: return [2 /*return*/];
+            }
+        });
+    });
+}
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
 function get_user_geometries(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user_id, dbQuery, dbResponse, err_38;
+        var user_id, dbQuery, dbResponse, err_39;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2214,8 +2283,8 @@ function get_user_geometries(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_38 = _a.sent();
-                    console.log(err_38);
+                    err_39 = _a.sent();
+                    console.log(err_39);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2328,6 +2397,7 @@ router.route('/a_to_b_time_distance_car').get(auth_1["default"], a_to_b_time_dis
 router.route('/network_coverage').get(auth_1["default"], network_coverage);
 router.route('/oci_coverage').get(auth_1["default"], oci_coverage);
 router.route('/mce_coverage').get(auth_1["default"], mce_coverage);
+router.route('/get_forecast').get(auth_1["default"], get_forecast);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
