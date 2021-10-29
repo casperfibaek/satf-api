@@ -14,29 +14,31 @@
   "author": "Casper Fibaek @ NIRAS",
   "license": "Unlicenced for now",
   "dependencies": {
+    "axios": "^0.24.0",
     "body-parser": "^1.19.0",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.5",
-    "crypto-js": "^4.0.0",
+    "crypto-js": "^4.1.1",
     "express": "^4.17.1",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
-    "nodemon": "^2.0.7",
-    "pg": "^8.6.0"
+    "nodemon": "^2.0.14",
+    "pg": "^8.7.1"
   },
   "devDependencies": {
-    "@types/compression": "^1.7.0",
+    "@types/axios": "^0.14.0",
+    "@types/compression": "^1.7.2",
     "@types/cookie-parser": "^1.4.2",
-    "@types/express": "^4.17.12",
-    "@types/jsonwebtoken": "^8.5.1",
-    "@types/morgan": "^1.9.2",
-    "@types/node": "^15.12.1",
-    "@types/pg": "^8.6.0",
-    "@typescript-eslint/eslint-plugin": "^4.26.0",
-    "@typescript-eslint/parser": "^4.26.0",
-    "eslint": "^7.28.0",
+    "@types/express": "^4.17.13",
+    "@types/jsonwebtoken": "^8.5.5",
+    "@types/morgan": "^1.9.3",
+    "@types/node": "^16.11.6",
+    "@types/pg": "^8.6.1",
+    "@typescript-eslint/eslint-plugin": "^5.2.0",
+    "@typescript-eslint/parser": "^5.2.0",
+    "eslint": "^8.1.0",
     "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.23.4",
-    "typescript": "^4.3.2"
+    "eslint-plugin-import": "^2.25.2",
+    "typescript": "^4.4.4"
   }
 }
