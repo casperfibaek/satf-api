@@ -50,7 +50,7 @@ var utils_1 = require("./utils");
 var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
-var axios = require("axios");
+var axios_1 = __importDefault(require("axios"));
 var version = '0.2.2';
 var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
@@ -2215,7 +2215,7 @@ function get_forecast(req, res) {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, axios("https://api.openweathermap.org/data/2.5/onecall?lat=" +
+                    return [4 /*yield*/, (0, axios_1["default"])("https://api.openweathermap.org/data/2.5/onecall?lat=" +
                             req.query.lat +
                             "&lon=" +
                             req.query.lng +
