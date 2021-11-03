@@ -2229,10 +2229,11 @@ function get_forecast(req, res) {
                     data = _a.sent();
                     format_time_1 = function (s) { return new Date(s * 1e3).toISOString().slice(0, -14); };
                     list_forecast = data.daily.map(function (props) {
-                        var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds;
+                        var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds, icon = props.icon;
                         return {
                             date: format_time_1(dt),
                             description: weather[0].description,
+                            icon: weather[0].icon,
                             temp_min: temp.min,
                             temp_max: temp.max,
                             humidity: humidity,

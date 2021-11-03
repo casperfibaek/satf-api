@@ -2011,10 +2011,11 @@ async function get_forecast(req: Request, res: Response) {
     const format_time = (s) => new Date(s * 1e3).toISOString().slice(0,-14);
 
     const list_forecast = data.daily.map(( props ) => {
-      const { weather, dt, temp, humidity, rain, clouds } = props
+      const { weather, dt, temp, humidity, rain, clouds, icon } = props
       return {
         date: format_time(dt),
         description: weather[0].description,
+        icon: weather[0].icon,
         temp_min: temp.min, 
         temp_max: temp.max,
         humidity,
