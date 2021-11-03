@@ -838,10 +838,10 @@ function pop_density_isochrone_bike(req, res) {
         });
     });
 }
-// New Function - population density in driving distance
+// New Function - population density in driving distance - using api grasshopper
 function pop_density_isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_13;
+        var response, isochrone, dbQuery, dbResponse, err_13;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -859,17 +859,21 @@ function pop_density_isochrone_car(req, res) {
                                 "function": 'pop_density_isochrone_car'
                             })];
                     }
-                    dbQuery = "\n    SELECT popDensCar('" + req.query.lng + "', '" + req.query.lat + "', '" + req.query.minutes + "') as pop_dense_iso_car;\n  ";
-                    _a.label = 1;
+                    return [4 /*yield*/, _get_isochrone(req.query.lat, req.query.lng, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    isochrone = JSON.stringify(response);
+                    dbQuery = "\n    SELECT popDens_apiCar(ST_GeomFromGeoJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_car)),
+                                message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_car'])),
                                 "function": 'pop_density_isochrone_car'
                             })];
                     }
@@ -878,7 +882,7 @@ function pop_density_isochrone_car(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_car'
                         })];
-                case 3:
+                case 4:
                     err_13 = _a.sent();
                     console.log(err_13);
                     return [2 /*return*/, res.status(500).json({
@@ -886,7 +890,7 @@ function pop_density_isochrone_car(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_car'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
@@ -2270,12 +2274,88 @@ function get_forecast(req, res) {
         });
     });
 }
+// function to get api isochrone 
+function get_api_isochrone(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, lat, lng, time, isochrone, err_39;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "get_isochrone"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "get_isochrone"
+                            })];
+                    }
+                    _a = req.query, lat = _a.lat, lng = _a.lng, time = _a.time;
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, _get_isochrone(lat, lng, time)];
+                case 2:
+                    isochrone = _b.sent();
+                    console.log(isochrone);
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: isochrone,
+                            "function": "get_isochrone"
+                        })];
+                case 3:
+                    err_39 = _b.sent();
+                    console.log(err_39);
+                    return [2 /*return*/, res.status(500).json({
+                            status: "failure",
+                            message: "Error encountered on server",
+                            "function": "get_isochrone"
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+// grasshopper internal isochrone function
+function _get_isochrone(lat, lng, minutes) {
+    return __awaiter(this, void 0, void 0, function () {
+        var key, time_min, response, data, isochrone, err_40;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    key = "b72d1f98-fde6-4437-adf1-28f8ca303da8";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 4, , 5]);
+                    time_min = minutes * 60;
+                    return [4 /*yield*/, (0, axios_1["default"])("https://graphhopper.com/api/1/isochrone?point=" + lat + "," + lng + "&time_limit=" + time_min + "&profile=car" + "&key=" + key)];
+                case 2:
+                    response = _a.sent();
+                    return [4 /*yield*/, response.data];
+                case 3:
+                    data = _a.sent();
+                    isochrone = data.polygons[0].geometry;
+                    return [2 /*return*/, isochrone];
+                case 4:
+                    err_40 = _a.sent();
+                    console.log(err_40);
+                    return [3 /*break*/, 5];
+                case 5: return [2 /*return*/];
+            }
+        });
+    });
+}
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
 function get_user_geometries(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user_id, dbQuery, dbResponse, err_39;
+        var user_id, dbQuery, dbResponse, err_41;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2295,8 +2375,8 @@ function get_user_geometries(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_39 = _a.sent();
-                    console.log(err_39);
+                    err_41 = _a.sent();
+                    console.log(err_41);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2425,6 +2505,7 @@ router.route('/network_coverage').get(auth_1["default"], network_coverage);
 router.route('/oci_coverage').get(auth_1["default"], oci_coverage);
 router.route('/mce_coverage').get(auth_1["default"], mce_coverage);
 router.route('/get_forecast').get(auth_1["default"], get_forecast);
+router.route('/get_api_isochrone').get(auth_1["default"], get_api_isochrone);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
