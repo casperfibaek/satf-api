@@ -314,12 +314,12 @@ function api_version(req, res) {
         var host, origin;
         return __generator(this, function (_a) {
             host = req.get('host');
-            origin = req.get('origin');
+            origin = req.headers.origin;
             // CLient environment
             // req.hostname, req.origin
             // console.log(os.hostname())
             // console.log(host)
-            // console.log(req)
+            console.log(req);
             // api envrinoment
             // os.hostname()
             return [2 /*return*/, res.status(200).json({

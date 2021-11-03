@@ -268,13 +268,13 @@ async function admin_level_2(req:Request, res:Response) {
 
 async function api_version(req:Request, res:Response) {
   const host = req.get('host')
-  const origin = req.get('origin')
+  const origin = req.headers.origin
   // CLient environment
   // req.hostname, req.origin
   
   // console.log(os.hostname())
   // console.log(host)
-  // console.log(req)
+  console.log(req)
   // api envrinoment
   // os.hostname()
 
