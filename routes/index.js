@@ -51,6 +51,7 @@ var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
 var axios_1 = __importDefault(require("axios"));
+var os = require("os");
 var version = '0.2.2';
 var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
@@ -310,10 +311,20 @@ function admin_level_2(req, res) {
 }
 function api_version(req, res) {
     return __awaiter(this, void 0, void 0, function () {
+        var host, origin;
         return __generator(this, function (_a) {
+            host = req.get('host');
+            origin = req.headers.origin;
+            // CLient environment
+            // req.hostname, req.origin
+            // console.log(os.hostname())
+            // console.log(host)
+            console.log(req);
+            // api envrinoment
+            // os.hostname()
             return [2 /*return*/, res.status(200).json({
                     status: 'success',
-                    message: version,
+                    message: { "version": version, "api_environment": host, "client_environment": origin },
                     "function": 'api_version'
                 })];
         });
@@ -2358,6 +2369,21 @@ function send_to_DB(req, res) {
 //   console.log(err);
 // }
 // };
+function send_geoms(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var body;
+        return __generator(this, function (_a) {
+            console.log('send geoms received serverside');
+            body = req.body;
+            console.log(body);
+            return [2 /*return*/, res.status(200).json({
+                    status: 'success',
+                    message: 'hello world',
+                    "function": 'send_geoms'
+                })];
+        });
+    });
+}
 function error_log(req, res) {
     var body = req.body;
     console.log(body);
@@ -2404,8 +2430,9 @@ router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
-router.route('/send_to_DB/:user_id').post(send_to_DB);
-router.route('/get_user_geometries/:user_id').get(get_user_geometries);
+router.route('/send_geoms').post(send_geoms);
+// router.route('/send_to_DB/:user_id').post(send_to_DB);
+// router.route('/get_user_geometries/:user_id').get(get_user_geometries);
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth_1["default"], function (req, res) { return res.send('home/api/batch'); });
 exports["default"] = router;

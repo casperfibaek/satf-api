@@ -15,6 +15,8 @@ import { callbackify } from 'util';
 
 import axios from "axios"
 
+const os = require("os")
+
 const version = '0.2.2';
 
 interface ApiResponse {
@@ -265,9 +267,20 @@ async function admin_level_2(req:Request, res:Response) {
 }
 
 async function api_version(req:Request, res:Response) {
+  const host = req.get('host')
+  const origin = req.headers.origin
+  // CLient environment
+  // req.hostname, req.origin
+  
+  // console.log(os.hostname())
+  // console.log(host)
+  console.log(req)
+  // api envrinoment
+  // os.hostname()
+
   return res.status(200).json({
     status: 'success',
-    message: version,
+    message: { "version": version, "api_environment": host, "client_environment": origin },
     function: 'api_version',
   } as ApiResponse);
 }
@@ -2165,7 +2178,18 @@ async function send_to_DB(req:Request, res:Response) {
   // }
 // };
 
+async function send_geoms(req:Request, res:Response) {
+  console.log('send geoms received serverside')
+  const { body } = req
+  console.log(body)
 
+  return res.status(200).json({
+    status: 'success',
+    message: 'hello world',
+    function: 'send_geoms',
+  } );
+
+}
 
 function error_log(req:Request, res:Response) {
   const { body } = req;
@@ -2216,9 +2240,11 @@ router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
+router.route('/send_geoms').post(send_geoms)
 
-router.route('/send_to_DB/:user_id').post(send_to_DB);
-router.route('/get_user_geometries/:user_id').get(get_user_geometries);
+
+// router.route('/send_to_DB/:user_id').post(send_to_DB);
+// router.route('/get_user_geometries/:user_id').get(get_user_geometries);
 
  
 
