@@ -5,10 +5,11 @@
 */
 exports.__esModule = true;
 exports["default"] = {
-    user: 'niras@satf-db',
-    host: 'satf-db.postgres.database.azure.com',
+    user: 'satf',
+    host: 'niras-magi-postgis.postgres.database.azure.com',
     database: 'satf',
-    password: 'G0ldf1sh',
+    password: 'KbqY3zzx!dGfNcJjJ',
     port: 5432,
+    ssl: true,
     admin_key: 'HPGKJDwlpWqZPIIH0RYanC3l80uVLTgnBLlNxeiIsQg='
 };
