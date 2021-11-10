@@ -841,7 +841,7 @@ function pop_density_isochrone_bike(req, res) {
 // New Function - population density in driving distance - using api grasshopper
 function pop_density_isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var response, isochrone, dbQuery, dbResponse, err_13;
+        var profile, response, isochrone, dbQuery, dbResponse, err_13;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -859,11 +859,14 @@ function pop_density_isochrone_car(req, res) {
                                 "function": 'pop_density_isochrone_car'
                             })];
                     }
-                    return [4 /*yield*/, _get_isochrone(req.query.lat, req.query.lng, req.query.minutes)];
+                    profile = "driving";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
+                    console.log(response);
                     isochrone = JSON.stringify(response);
-                    dbQuery = "\n    SELECT popDens_apiCar(ST_GeomFromGeoJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
+                    dbQuery = "\n    SELECT popDens_apiCar(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
+                    console.log(dbQuery);
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
@@ -2277,7 +2280,7 @@ function get_forecast(req, res) {
 // function to get api isochrone 
 function get_api_isochrone(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, lat, lng, time, isochrone, err_39;
+        var _a, profile, lng, lat, minutes, isochrone, err_39;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2295,11 +2298,11 @@ function get_api_isochrone(req, res) {
                                 "function": "get_isochrone"
                             })];
                     }
-                    _a = req.query, lat = _a.lat, lng = _a.lng, time = _a.time;
+                    _a = req.query, profile = _a.profile, lng = _a.lng, lat = _a.lat, minutes = _a.minutes;
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, _get_isochrone(lat, lng, time)];
+                    return [4 /*yield*/, _get_isochrone(profile, lng, lat, minutes)];
                 case 2:
                     isochrone = _b.sent();
                     console.log(isochrone);
@@ -2322,24 +2325,24 @@ function get_api_isochrone(req, res) {
     });
 }
 // grasshopper internal isochrone function
-function _get_isochrone(lat, lng, minutes) {
+function _get_isochrone(profile, lng, lat, minutes) {
     return __awaiter(this, void 0, void 0, function () {
-        var key, time_min, response, data, isochrone, err_40;
+        var key, response, data, isochrone, err_40;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    key = "b72d1f98-fde6-4437-adf1-28f8ca303da8";
+                    key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3ZrczhwdnEwaGRzMm91Z2ZoZ3M2ZnVmIn0.qoKWjMVtpxQvMqSahsRUgA";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 4, , 5]);
-                    time_min = minutes * 60;
-                    return [4 /*yield*/, (0, axios_1["default"])("https://graphhopper.com/api/1/isochrone?point=" + lat + "," + lng + "&time_limit=" + time_min + "&profile=car" + "&key=" + key)];
+                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/isochrone/v1/mapbox/" + profile + "/" + lng + "," + lat + "?contours_minutes=" + minutes + "&polygons=true&access_token=" + key)];
                 case 2:
                     response = _a.sent();
                     return [4 /*yield*/, response.data];
                 case 3:
                     data = _a.sent();
-                    isochrone = data.polygons[0].geometry;
+                    isochrone = data.features[0].geometry;
+                    console.log(isochrone);
                     return [2 /*return*/, isochrone];
                 case 4:
                     err_40 = _a.sent();

@@ -793,17 +793,18 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   }
 
   // const { lat, lng, minutes } = req.query
-
-  const response = await _get_isochrone(req.query.lat, req.query.lng, req.query.minutes)
-  
+  const profile = "driving"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+  console.log(response)
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
-    SELECT popDens_apiCar(ST_GeomFromGeoJSON('${isochrone}')) as pop_api_iso_car;
+    SELECT popDens_apiCar(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
   `;
-
+    console.log(dbQuery)
   try {
     const dbResponse = await pool.query(dbQuery);
+    
 
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
@@ -2079,11 +2080,11 @@ async function get_api_isochrone(req, res) {
     } as ApiResponse);
   }
 
-  const {lat, lng, time} = req.query
+  const {profile, lng, lat, minutes} = req.query
   try {
 
 
-  const isochrone = await _get_isochrone(lat, lng, time)
+  const isochrone = await _get_isochrone(profile, lng, lat, minutes)
 
   console.log(isochrone)
 
@@ -2108,21 +2109,24 @@ async function get_api_isochrone(req, res) {
 
 // grasshopper internal isochrone function
 
-async function _get_isochrone(lat, lng, minutes) {
+async function _get_isochrone(profile, lng, lat, minutes) {
 
   // }
-  var key = "b72d1f98-fde6-4437-adf1-28f8ca303da8";
+  var key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3ZrczhwdnEwaGRzMm91Z2ZoZ3M2ZnVmIn0.qoKWjMVtpxQvMqSahsRUgA";
   try {
-    const time_min = minutes*60
+    // const time_min = minutes*60
 
     const response = await axios(
-      "https://graphhopper.com/api/1/isochrone?point="+lat + "," + lng + "&time_limit="+ time_min + "&profile=car" + "&key=" + key);
+      "https://api.mapbox.com/isochrone/v1/mapbox/"+ profile + "/" + lng + "," + lat + "?contours_minutes="+ minutes + "&polygons=true&access_token=" + key);
     const data = await response.data;
     
-    const isochrone = data.polygons[0].geometry;
+    const isochrone = data.features[0].geometry;
 
+    console.log(isochrone);
+    
     return isochrone
-  }
+    }
+  
   catch (err) {
     console.log(err)
   }
