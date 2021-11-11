@@ -2206,21 +2206,19 @@ async function _get_isochrone(profile, lng, lat, minutes) {
 
 
     const dbQuery = 
-      `SELECT
-        b.layer_id,
-      COUNT (b.layer_id)
-      FROM
-        users as a
-      INNER JOIN user_geometries as b
-      ON 
-        a.id = b.user_id
-      INNER JOIN user_layers as c
-      ON
-        b.layer_id = c.layer_id
-      WHERE
-        username = '${user}'
-      GROUP BY
-        b.layer_id`
+      `With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
+      From user_geometries g
+      LEFT JOIN user_layers l ON g.layer_id = l.layer_id
+      GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)
+      
+      
+      
+      SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
+      FROM selection s
+      LEFT JOIN users u ON s.user_id = u.id
+      WHERE username = '${user}'
+      GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count
+      ;`
 
   try {
     const dbResponse = await pool.query(dbQuery);
