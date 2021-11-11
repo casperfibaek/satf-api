@@ -515,6 +515,68 @@ async function population_density_buffer(req:Request, res:Response) {
   }
 }
 
+async function population_buffer(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng or buffer',
+      function: 'population_buffer',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'population_buffer',
+    } as ApiResponse);
+  }
+
+  const dbQuery = `
+    WITH buf AS (
+      SELECT ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${req.query.buffer}'
+      )::geometry As geom
+    ),
+    query AS(
+      SELECT 
+        SUM((ST_SummaryStats(ST_Clip(a.rast, geom), 1)).sum)::int AS daytime,
+        SUM((ST_SummaryStats(ST_Clip(b.rast, geom), 1)).sum)::int AS nighttime,
+        SUM((ST_SummaryStats(ST_Clip(c.rast, geom), 1)).sum)::int AS unweighted
+      FROM buf p
+      LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(p.geom, a.rast))
+      LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(p.geom, b.rast))
+      LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(p.geom, c.rast))
+    )
+    SELECT json_agg(json_build_array('daytime:', daytime, 'nighttime:', nighttime, 'unweighted:', unweighted))
+    as population_buf
+    FROM query;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].population_buf,
+        function: 'population_buffer',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'population_buffer',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'population_buffer',
+    } as ApiResponse);
+  }
+}
+
+
 async function population_density_walk(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
@@ -2295,6 +2357,7 @@ router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
 router.route('/demography').get(auth, demography);
 router.route('/population_density_buffer').get(auth, population_density_buffer);
+router.route('/population_buffer').get(auth, population_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);
 router.route('/admin_level_1').get(auth, admin_level_1);

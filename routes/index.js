@@ -576,9 +576,61 @@ function population_density_buffer(req, res) {
         });
     });
 }
-function population_density_walk(req, res) {
+function population_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_8;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing lat, lng or buffer',
+                                "function": 'population_buffer'
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Invalid input',
+                                "function": 'population_buffer'
+                            })];
+                    }
+                    dbQuery = "\n    WITH buf AS (\n      SELECT ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + req.query.buffer + "'\n      )::geometry As geom\n    ),\n    query AS(\n      SELECT \n        SUM((ST_SummaryStats(ST_Clip(a.rast, geom), 1)).sum)::int AS daytime,\n        SUM((ST_SummaryStats(ST_Clip(b.rast, geom), 1)).sum)::int AS nighttime,\n        SUM((ST_SummaryStats(ST_Clip(c.rast, geom), 1)).sum)::int AS unweighted\n      FROM buf p\n      LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(p.geom, a.rast))\n      LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(p.geom, b.rast))\n      LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(p.geom, c.rast))\n    )\n    SELECT json_agg(json_build_array('daytime:', daytime, 'nighttime:', nighttime, 'unweighted:', unweighted))\n    as population_buf\n    FROM query;\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    if (dbResponse.rowCount > 0) {
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: dbResponse.rows[0].population_buf,
+                                "function": 'population_buffer'
+                            })];
+                    }
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'population_buffer'
+                        })];
+                case 3:
+                    err_8 = _a.sent();
+                    console.log(err_8);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'population_buffer'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+function population_density_walk(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dbQuery, dbResponse, err_9;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -616,8 +668,8 @@ function population_density_walk(req, res) {
                             "function": 'population_density_walk'
                         })];
                 case 3:
-                    err_8 = _a.sent();
-                    console.log(err_8);
+                    err_9 = _a.sent();
+                    console.log(err_9);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -630,7 +682,7 @@ function population_density_walk(req, res) {
 }
 function population_density_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_9;
+        var dbQuery, dbResponse, err_10;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -668,8 +720,8 @@ function population_density_bike(req, res) {
                             "function": 'population_density_bike'
                         })];
                 case 3:
-                    err_9 = _a.sent();
-                    console.log(err_9);
+                    err_10 = _a.sent();
+                    console.log(err_10);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -682,7 +734,7 @@ function population_density_bike(req, res) {
 }
 function population_density_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_10;
+        var dbQuery, dbResponse, err_11;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -720,8 +772,8 @@ function population_density_car(req, res) {
                             "function": 'population_density_car'
                         })];
                 case 3:
-                    err_10 = _a.sent();
-                    console.log(err_10);
+                    err_11 = _a.sent();
+                    console.log(err_11);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -735,7 +787,7 @@ function population_density_car(req, res) {
 // New Function - population density in walking distance
 function pop_density_isochrone_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_11;
+        var dbQuery, dbResponse, err_12;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -773,8 +825,8 @@ function pop_density_isochrone_walk(req, res) {
                             "function": 'pop_density_isochrone_walk'
                         })];
                 case 3:
-                    err_11 = _a.sent();
-                    console.log(err_11);
+                    err_12 = _a.sent();
+                    console.log(err_12);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -788,7 +840,7 @@ function pop_density_isochrone_walk(req, res) {
 // New Function - population density in biking distance
 function pop_density_isochrone_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_12;
+        var dbQuery, dbResponse, err_13;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -826,8 +878,8 @@ function pop_density_isochrone_bike(req, res) {
                             "function": 'pop_density_isochrone_bike'
                         })];
                 case 3:
-                    err_12 = _a.sent();
-                    console.log(err_12);
+                    err_13 = _a.sent();
+                    console.log(err_13);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -841,7 +893,7 @@ function pop_density_isochrone_bike(req, res) {
 // New Function - population density in driving distance - using api grasshopper
 function pop_density_isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var profile, response, isochrone, dbQuery, dbResponse, err_13;
+        var profile, response, isochrone, dbQuery, dbResponse, err_14;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -886,8 +938,8 @@ function pop_density_isochrone_car(req, res) {
                             "function": 'pop_density_isochrone_car'
                         })];
                 case 4:
-                    err_13 = _a.sent();
-                    console.log(err_13);
+                    err_14 = _a.sent();
+                    console.log(err_14);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -900,7 +952,7 @@ function pop_density_isochrone_car(req, res) {
 }
 function nightlights(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_14;
+        var dbQuery, dbResponse, err_15;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -938,8 +990,8 @@ function nightlights(req, res) {
                             "function": 'nightlights'
                         })];
                 case 3:
-                    err_14 = _a.sent();
-                    console.log(err_14);
+                    err_15 = _a.sent();
+                    console.log(err_15);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -952,7 +1004,7 @@ function nightlights(req, res) {
 }
 function demography(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_15;
+        var dbQuery, dbResponse, err_16;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -990,8 +1042,8 @@ function demography(req, res) {
                             "function": 'demography'
                         })];
                 case 3:
-                    err_15 = _a.sent();
-                    console.log(err_15);
+                    err_16 = _a.sent();
+                    console.log(err_16);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1004,7 +1056,7 @@ function demography(req, res) {
 }
 function nearest_placename(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_16;
+        var dbQuery, dbResponse, err_17;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1042,8 +1094,8 @@ function nearest_placename(req, res) {
                             "function": 'nearest_placename'
                         })];
                 case 3:
-                    err_16 = _a.sent();
-                    console.log(err_16);
+                    err_17 = _a.sent();
+                    console.log(err_17);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1056,7 +1108,7 @@ function nearest_placename(req, res) {
 }
 function nearest_poi(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_17;
+        var dbQuery, dbResponse, err_18;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1094,8 +1146,8 @@ function nearest_poi(req, res) {
                             "function": 'nearest_poi'
                         })];
                 case 3:
-                    err_17 = _a.sent();
-                    console.log(err_17);
+                    err_18 = _a.sent();
+                    console.log(err_18);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1108,7 +1160,7 @@ function nearest_poi(req, res) {
 }
 function get_banks(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var target, name, dbQuery, dbResponse, returnArray, i, err_18;
+        var target, name, dbQuery, dbResponse, returnArray, i, err_19;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1166,8 +1218,8 @@ function get_banks(req, res) {
                             "function": 'get_banks'
                         })];
                 case 3:
-                    err_18 = _a.sent();
-                    console.log(err_18);
+                    err_19 = _a.sent();
+                    console.log(err_19);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1180,7 +1232,7 @@ function get_banks(req, res) {
 }
 function nearest_bank(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_19;
+        var dbQuery, dbResponse, err_20;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1218,8 +1270,8 @@ function nearest_bank(req, res) {
                             "function": 'nearest_bank'
                         })];
                 case 3:
-                    err_19 = _a.sent();
-                    console.log(err_19);
+                    err_20 = _a.sent();
+                    console.log(err_20);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1232,7 +1284,7 @@ function nearest_bank(req, res) {
 }
 function nearest_bank_distance(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_20;
+        var dbQuery, dbResponse, err_21;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1270,8 +1322,8 @@ function nearest_bank_distance(req, res) {
                             "function": 'nearest_bank_distance'
                         })];
                 case 3:
-                    err_20 = _a.sent();
-                    console.log(err_20);
+                    err_21 = _a.sent();
+                    console.log(err_21);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -1284,7 +1336,7 @@ function nearest_bank_distance(req, res) {
 }
 function isochrone_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_21;
+        var dbQuery, dbResponse, err_22;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1322,8 +1374,8 @@ function isochrone_walk(req, res) {
                             "function": 'isochrone_walk'
                         })];
                 case 3:
-                    err_21 = _a.sent();
-                    console.log(err_21);
+                    err_22 = _a.sent();
+                    console.log(err_22);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating isocrone',
@@ -1337,7 +1389,7 @@ function isochrone_walk(req, res) {
 // New Function - Isochrone biking distance
 function isochrone_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_22;
+        var dbQuery, dbResponse, err_23;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1375,8 +1427,8 @@ function isochrone_bike(req, res) {
                             "function": 'isochrone_bike'
                         })];
                 case 3:
-                    err_22 = _a.sent();
-                    console.log(err_22);
+                    err_23 = _a.sent();
+                    console.log(err_23);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating isocrone',
@@ -1390,7 +1442,7 @@ function isochrone_bike(req, res) {
 // New Function - Isochrone car
 function isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_23;
+        var dbQuery, dbResponse, err_24;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1428,8 +1480,8 @@ function isochrone_car(req, res) {
                             "function": 'isochrone_car'
                         })];
                 case 3:
-                    err_23 = _a.sent();
-                    console.log(err_23);
+                    err_24 = _a.sent();
+                    console.log(err_24);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating isocrone',
@@ -1462,37 +1514,11 @@ function checkUsername(username) {
 }
 function usernameExists(username) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_24;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "'\n    LIMIT 1;\n  ";
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
-                case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        return [2 /*return*/, true];
-                    }
-                    return [2 /*return*/, false];
-                case 3:
-                    err_24 = _a.sent();
-                    console.log(err_24);
-                    return [2 /*return*/, false];
-                case 4: return [2 /*return*/];
-            }
-        });
-    });
-}
-function verifyUser(username, password) {
-    return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_25;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "' and \"password\" = '" + password + "'\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "'\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1512,9 +1538,35 @@ function verifyUser(username, password) {
         });
     });
 }
+function verifyUser(username, password) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dbQuery, dbResponse, err_26;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "' and \"password\" = '" + password + "'\n    LIMIT 1;\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    if (dbResponse.rowCount > 0) {
+                        return [2 /*return*/, true];
+                    }
+                    return [2 /*return*/, false];
+                case 3:
+                    err_26 = _a.sent();
+                    console.log(err_26);
+                    return [2 /*return*/, false];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function insertUser(username, password) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, err_26;
+        var dbQuery, err_27;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1527,8 +1579,8 @@ function insertUser(username, password) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 3:
-                    err_26 = _a.sent();
-                    console.log(err_26);
+                    err_27 = _a.sent();
+                    console.log(err_27);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1537,7 +1589,7 @@ function insertUser(username, password) {
 }
 function deleteUser(username) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, err_27;
+        var dbQuery, err_28;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1550,8 +1602,8 @@ function deleteUser(username) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 3:
-                    err_27 = _a.sent();
-                    console.log(err_27);
+                    err_28 = _a.sent();
+                    console.log(err_28);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1628,7 +1680,7 @@ function create_user(req, res) {
 }
 function login_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_28;
+        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_29;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -1678,8 +1730,8 @@ function login_user(req, res) {
                             "function": 'login_user'
                         })];
                 case 3:
-                    err_28 = _b.sent();
-                    console.log(err_28);
+                    err_29 = _b.sent();
+                    console.log(err_29);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1692,7 +1744,7 @@ function login_user(req, res) {
 }
 function login_user_get(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var username, password, hashedPassword, dbQuery, dbResponse, token, err_29;
+        var username, password, hashedPassword, dbQuery, dbResponse, token, err_30;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1743,8 +1795,8 @@ function login_user_get(req, res) {
                             "function": 'login_user'
                         })];
                 case 3:
-                    err_29 = _a.sent();
-                    console.log(err_29);
+                    err_30 = _a.sent();
+                    console.log(err_30);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1781,7 +1833,7 @@ function auth_token(token_to_verify) {
 }
 function delete_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_30, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_31;
+        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_31, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_32;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -1825,8 +1877,8 @@ function delete_user(req, res) {
                     }
                     return [3 /*break*/, 6];
                 case 5:
-                    err_30 = _b.sent();
-                    console.log(err_30);
+                    err_31 = _b.sent();
+                    console.log(err_31);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1870,8 +1922,8 @@ function delete_user(req, res) {
                     _b.label = 12;
                 case 12: return [3 /*break*/, 14];
                 case 13:
-                    err_31 = _b.sent();
-                    console.log(err_31);
+                    err_32 = _b.sent();
+                    console.log(err_32);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1889,7 +1941,7 @@ function delete_user(req, res) {
 // Getting time and distance from A to B
 function a_to_b_time_distance_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_32;
+        var dbQuery, dbResponse, rep, err_33;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1928,8 +1980,8 @@ function a_to_b_time_distance_walk(req, res) {
                             "function": 'a_to_b_time_distance_walk'
                         })];
                 case 3:
-                    err_32 = _a.sent();
-                    console.log(err_32);
+                    err_33 = _a.sent();
+                    console.log(err_33);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -1943,7 +1995,7 @@ function a_to_b_time_distance_walk(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_33;
+        var dbQuery, dbResponse, rep, err_34;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1982,8 +2034,8 @@ function a_to_b_time_distance_bike(req, res) {
                             "function": 'a_to_b_time_distance_bike'
                         })];
                 case 3:
-                    err_33 = _a.sent();
-                    console.log(err_33);
+                    err_34 = _a.sent();
+                    console.log(err_34);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -1997,7 +2049,7 @@ function a_to_b_time_distance_bike(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_34;
+        var dbQuery, dbResponse, rep, err_35;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2036,8 +2088,8 @@ function a_to_b_time_distance_car(req, res) {
                             "function": 'a_to_b_time_distance_car'
                         })];
                 case 3:
-                    err_34 = _a.sent();
-                    console.log(err_34);
+                    err_35 = _a.sent();
+                    console.log(err_35);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -2052,7 +2104,7 @@ function a_to_b_time_distance_car(req, res) {
 //1. gets coverage network from both data sources (MCE and OCI)
 function network_coverage(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_35;
+        var dbQuery, dbResponse, err_36;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2090,8 +2142,8 @@ function network_coverage(req, res) {
                             "function": 'network_coverage'
                         })];
                 case 3:
-                    err_35 = _a.sent();
-                    console.log(err_35);
+                    err_36 = _a.sent();
+                    console.log(err_36);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2105,7 +2157,7 @@ function network_coverage(req, res) {
 // 2. Gets data coverage from OCI source 
 function oci_coverage(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_36;
+        var dbQuery, dbResponse, err_37;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2143,8 +2195,8 @@ function oci_coverage(req, res) {
                             "function": 'oci_coverage'
                         })];
                 case 3:
-                    err_36 = _a.sent();
-                    console.log(err_36);
+                    err_37 = _a.sent();
+                    console.log(err_37);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2158,7 +2210,7 @@ function oci_coverage(req, res) {
 // 3. Gets data coverage from MCE source
 function mce_coverage(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_37;
+        var dbQuery, dbResponse, err_38;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2196,8 +2248,8 @@ function mce_coverage(req, res) {
                             "function": 'mce_coverage'
                         })];
                 case 3:
-                    err_37 = _a.sent();
-                    console.log(err_37);
+                    err_38 = _a.sent();
+                    console.log(err_38);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2211,7 +2263,7 @@ function mce_coverage(req, res) {
 // get weather forecats for 7 days from Open Weather api - string output for now
 function get_forecast(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var key, response, data, format_time_1, list_forecast, err_38;
+        var key, response, data, format_time_1, list_forecast, err_39;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2265,8 +2317,8 @@ function get_forecast(req, res) {
                             "function": "get_forecast"
                         })];
                 case 4:
-                    err_38 = _a.sent();
-                    console.log(err_38);
+                    err_39 = _a.sent();
+                    console.log(err_39);
                     return [2 /*return*/, res.status(500).json({
                             status: "failure",
                             message: "Error encountered on server",
@@ -2280,7 +2332,7 @@ function get_forecast(req, res) {
 // function to get api isochrone 
 function get_api_isochrone(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, profile, lng, lat, minutes, isochrone, err_39;
+        var _a, profile, lng, lat, minutes, isochrone, err_40;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2312,8 +2364,8 @@ function get_api_isochrone(req, res) {
                             "function": "get_isochrone"
                         })];
                 case 3:
-                    err_39 = _b.sent();
-                    console.log(err_39);
+                    err_40 = _b.sent();
+                    console.log(err_40);
                     return [2 /*return*/, res.status(500).json({
                             status: "failure",
                             message: "Error encountered on server",
@@ -2327,7 +2379,7 @@ function get_api_isochrone(req, res) {
 // grasshopper internal isochrone function
 function _get_isochrone(profile, lng, lat, minutes) {
     return __awaiter(this, void 0, void 0, function () {
-        var key, response, data, isochrone, err_40;
+        var key, response, data, isochrone, err_41;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2345,8 +2397,8 @@ function _get_isochrone(profile, lng, lat, minutes) {
                     console.log(isochrone);
                     return [2 /*return*/, isochrone];
                 case 4:
-                    err_40 = _a.sent();
-                    console.log(err_40);
+                    err_41 = _a.sent();
+                    console.log(err_41);
                     return [3 /*break*/, 5];
                 case 5: return [2 /*return*/];
             }
@@ -2358,7 +2410,7 @@ function _get_isochrone(profile, lng, lat, minutes) {
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
 function get_user_geometries(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user_id, dbQuery, dbResponse, err_41;
+        var user_id, dbQuery, dbResponse, err_42;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2378,8 +2430,8 @@ function get_user_geometries(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_41 = _a.sent();
-                    console.log(err_41);
+                    err_42 = _a.sent();
+                    console.log(err_42);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2490,6 +2542,7 @@ router.route('/isochrone_car').get(auth_1["default"], isochrone_car);
 router.route('/nightlights').get(auth_1["default"], nightlights);
 router.route('/demography').get(auth_1["default"], demography);
 router.route('/population_density_buffer').get(auth_1["default"], population_density_buffer);
+router.route('/population_buffer').get(auth_1["default"], population_buffer);
 router.route('/urban_status').get(auth_1["default"], urban_status);
 router.route('/urban_status_simple').get(auth_1["default"], urban_status_simple);
 router.route('/admin_level_1').get(auth_1["default"], admin_level_1);
