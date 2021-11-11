@@ -2198,20 +2198,30 @@ async function _get_isochrone(profile, lng, lat, minutes) {
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
-  async function get_user_geometries(req:Request, res:Response) {
+  async function get_user_layer_metadata(req:Request, res:Response) {
 
-    console.log('$$$$$$$@')
-    // const dbQuery = 
-    //   `SELECT geometry_id::INTEGER, ST_AsGeoJSON(geom) as geom FROM geometries WHERE user_id = ${req.params.user_id}",
-    //   `
-    const { user_id } = req.params
+    let { user } = req.params
+    
+    console.log(`fetching layer_metadata for ${user} from database serverside`)
+
+
     const dbQuery = 
-      `SELECT ST_AsGeoJSON(g.geom) as geom, g.layer_id::INTEGER as layer_id, g.user_id::INTEGER as user_id, l.name as layer_name, g.geom_id as geom_id
-      FROM user_geometries g
-      LEFT JOIN user_layers l ON g.layer_id=l.layer_id
-      WHERE l.user_id = ${user_id}
-      ORDER BY g.layer_id`
-    // console.log(dbQuery)
+      `SELECT
+        b.layer_id,
+      COUNT (b.layer_id)
+      FROM
+        users as a
+      INNER JOIN user_geometries as b
+      ON 
+        a.id = b.user_id
+      INNER JOIN user_layers as c
+      ON
+        b.layer_id = c.layer_id
+      WHERE
+        username = '${user}'
+      GROUP BY
+        b.layer_id`
+
   try {
     const dbResponse = await pool.query(dbQuery);
     console.log(dbResponse)
@@ -2224,113 +2234,162 @@ async function _get_isochrone(profile, lng, lat, minutes) {
   }
 };
 
-// Put user geometries
-// app.put("/api/v1/geometries/:user_id", async (req, res) => {
-
-
-async function send_to_DB(req:Request, res:Response) {
-  console.log("submit geometriess attempted serverside");
-  // console.log(req.body.featureCollection)
-  // console.log(req.body.name)
-
-  ////// INFO PROVIDED
-  // user_id
-  // current layer ID and curren layer name
-  // all points in current layer
-
-
-  const values = []
-
-  const { featureCollection, name: layerName } = req.body
+async function get_layer_geoms(req:Request, res:Response) {
   
-  featureCollection.features.forEach(x=> {
-    
-    const { properties: { id, context_info }, geometry } = x
-    console.log(id, context_info, geometry, layerName)
-
-    //// either collate to big database update push thing
-
-    //// send to DB one at a time
-    values.push({id, context_info, geometry, layerName})
-
+  function generatePoint(coords:number[], properties:any = {}) {
+    const geometry = {
+      type: 'Point',
+      coordinates: coords.slice().reverse(),
+    };
+  
+    return {
+      type: 'Feature',
+      properties,
+      geometry,
+    };
   }
   
-  )
-  // console.log(req.params.user_id)
-  // console.log(req.body)
-
-  // let features = ''
-  // const geom_id = 
-  // featureCollection.features.forEach(x=>{
-
-
-
-  //   const string_values = ((geom_id, user_id, x.geom.strinfia())
-
-  // })
-
-
-  // try {
-  //     const deleteResults = db.query(
-  //       `INSERT INTO geometries (geom_id, user_id, geom) values ${string_values}`, 
-  //       [user_id]
-  //     );
+  // Generate a geojson from an array
+  function generateGeojson(geometryArray:number[][], propertiesArray:any[]) {
+    const collection = {
+      type: 'FeatureCollection',
+      features: [],
+    };
+  
+    for (let i = 0; i < geometryArray.length; i += 1) {
+      const geometry = geometryArray[i];
+      const properties = propertiesArray[i] ? propertiesArray[i] : {};
+  
+      if (typeof geometry[0] === 'number' && typeof geometry[1] === 'number' && geometry.length === 2) {
+        collection.features.push(generatePoint(geometry, properties));
+      }
+    }
+  
+    return collection;
+  }
 
 
+  console.log('fetching geometries from database serverside.')
+  const { user, layer_id } = req.params
+  console.log(user, layer_id)
+
+  const dbQuery = 
+    `
+    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id
+    FROM user_geometries g
+    LEFT JOIN user_layers l ON g.layer_id=l.layer_id
+	  INNER JOIN users u ON g.user_id = u.id
+    WHERE u.username = '${user}' AND g.layer_id = ${layer_id}
+    ORDER BY g.layer_id`
 
 
+
+  const geomBin = []
+  const propertyBin = []
+  try {
+  const dbResponse = await pool.query(dbQuery);
+  console.log(dbResponse)
+  dbResponse.rows.forEach(row => {
+    const {geom, layer_id, layer_name, geom_id} = row
+    const [lat, lng] = JSON.parse(geom).coordinates
+    geomBin.push([lat, lng])
+    propertyBin.push({geom_id})
+  });
+  const geoJSON = generateGeojson(geomBin, propertyBin)
+  console.log(geoJSON)
   res.status(200).json({
-        status: "success",
-        results: "hi",
-      });
-} 
-  // const { user_id } = req.params;
-  // const { geometries } = req.body;
+    status: "success",
+    results: geoJSON,
+  });
+  } catch (err) {
+  console.log(err);
+}
+};
 
-  // let temp = [];
-  // geometries.forEach((geom) => {
-  //   const { geometry_id, geometry } = geom;
-  //   /// formatting away double quotes. PSQL seems to only accept single quotes around the geojson
-  //   const formattedGeometry = "'" + geometry + "'";
-  //   temp.push(
-  //     `(${geometry_id}, ${user_id}, ST_GeomFromGeoJSON(${formattedGeometry}))`
-  //   );
-  // });
-  // const updated_geometries = temp.join(",");
-
-  // try {
-  //   const deleteResults = db.query(
-  //     "DELETE FROM geometries WHERE user_id = $1", 
-  //     [user_id]
-  //   );
-
-  //   const update_geoms =
-  //     "INSERT INTO geometries (geometry_id, user_id, geom) VALUES " + updated_geometries;
-  //   console.log(text);
-
-  //   const results = await db.query(update_geoms);
-
-  //   res.status(200).json({
-  //     status: "success",
-  //     results: results.rows[0],
-  //   });
-  // } catch (err) {
-  //   console.log(err);
-  // }
-// };
 
 async function send_geoms(req:Request, res:Response) {
-  console.log('send geoms received serverside')
-  const { body } = req
-  console.log(body)
+  // console.log('send geoms received serverside')
+  // const { featureCollection, token } = req.body
 
-  return res.status(200).json({
-    status: 'success',
-    message: 'hello world',
-    function: 'send_geoms',
-  } );
+  // console.log(featureCollection)
+  // console.log(token)
+
+  // const [username, _] = token.split(':')
+
+  // let values = []
+  // const layername = featureCollection.features[0].properties['layername']
+  // featureCollection.features.forEach(f => {
+
+  //   const { geometry } = f
+
+  //   if (layername === f.properties['layername']) {
+  //     console.log("that's  great")
+  //   }
+  //   else {
+  //     return res.status(400).json({
+  //       status: 'failure',
+  //       message: 'Invalid input',
+  //       function: 'send_geoms',
+  //     } as ApiResponse);
+  //   }
+
+
+  //   /// formatting away double quotes. PSQL seems to only accept single quotes around the geojson
+    
+
+  //   values.push(
+  //     `(${layername}, ${user_id} , ST_GeomFromGeoJSON('${geometry}'))`
+  //   );
+  // })
+    
+
+    //// username cannot make multiple layers with the same name
+
+
+    // const dbQuery = `with s as (
+    //   select layer_id, layername
+    //   from LAYER_TABLE
+    //   where name = ${layername}
+    //   ), i as (
+    //   insert into LAYER_TABLE (name)
+    //   select ${layername}
+    //   where not exists (select ${layername} from s)
+    //   returning layer_id
+    //   )
+    //   select layer_id from i
+    //   union all
+    //   select layer_id from s;`
+
+    //   "INSERT INTO geometries (, user_id, geom) VALUES " + values;
+     
+  //     try {
+        
+  //       const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: dbResponse.rows[0].length,
+  //       function: 'admin_level_1',
+  //     } as ApiResponse);
+  //   }
+          
+
+
+  //       }
+  //      catch (err) {
+  //       console.log(err);
+  //     }
+  
+
+  // return res.status(200).json({
+  //   status: 'success',
+  //   message: 'hello world',
+  //   function: 'send_geoms',
+  // } );
 
 }
+
+
 
 function error_log(req:Request, res:Response) {
   const { body } = req;
@@ -2384,6 +2443,8 @@ router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
 router.route('/send_geoms').post(send_geoms)
+router.route('/get_user_layer_metadata/:user').get(get_user_layer_metadata)
+router.route('/get_layer_geoms/:user/:layer_id').get(get_layer_geoms)
 
 
 // router.route('/send_to_DB/:user_id').post(send_to_DB);

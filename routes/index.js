@@ -2408,15 +2408,15 @@ function _get_isochrone(profile, lng, lat, minutes) {
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
-function get_user_geometries(req, res) {
+function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user_id, dbQuery, dbResponse, err_42;
+        var user, dbQuery, dbResponse, err_42;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    console.log('$$$$$$$@');
-                    user_id = req.params.user_id;
-                    dbQuery = "SELECT ST_AsGeoJSON(g.geom) as geom, g.layer_id::INTEGER as layer_id, g.user_id::INTEGER as user_id, l.name as layer_name, g.geom_id as geom_id\n      FROM user_geometries g\n      LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n      WHERE l.user_id = " + user_id + "\n      ORDER BY g.layer_id";
+                    user = req.params.user;
+                    console.log("fetching layer_metadata for " + user + " from database serverside");
+                    dbQuery = "SELECT\n        b.layer_id,\n      COUNT (b.layer_id)\n      FROM\n        users as a\n      INNER JOIN user_geometries as b\n      ON \n        a.id = b.user_id\n      INNER JOIN user_layers as c\n      ON\n        b.layer_id = c.layer_id\n      WHERE\n        username = '" + user + "'\n      GROUP BY\n        b.layer_id";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2439,83 +2439,79 @@ function get_user_geometries(req, res) {
     });
 }
 ;
-// Put user geometries
-// app.put("/api/v1/geometries/:user_id", async (req, res) => {
-function send_to_DB(req, res) {
+function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var values, _a, featureCollection, layerName;
+        function generatePoint(coords, properties) {
+            if (properties === void 0) { properties = {}; }
+            var geometry = {
+                type: 'Point',
+                coordinates: coords.slice().reverse()
+            };
+            return {
+                type: 'Feature',
+                properties: properties,
+                geometry: geometry
+            };
+        }
+        // Generate a geojson from an array
+        function generateGeojson(geometryArray, propertiesArray) {
+            var collection = {
+                type: 'FeatureCollection',
+                features: []
+            };
+            for (var i = 0; i < geometryArray.length; i += 1) {
+                var geometry = geometryArray[i];
+                var properties = propertiesArray[i] ? propertiesArray[i] : {};
+                if (typeof geometry[0] === 'number' && typeof geometry[1] === 'number' && geometry.length === 2) {
+                    collection.features.push(generatePoint(geometry, properties));
+                }
+            }
+            return collection;
+        }
+        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_43;
         return __generator(this, function (_b) {
-            console.log("submit geometriess attempted serverside");
-            values = [];
-            _a = req.body, featureCollection = _a.featureCollection, layerName = _a.name;
-            featureCollection.features.forEach(function (x) {
-                var _a = x.properties, id = _a.id, context_info = _a.context_info, geometry = x.geometry;
-                console.log(id, context_info, geometry, layerName);
-                //// either collate to big database update push thing
-                //// send to DB one at a time
-                values.push({ id: id, context_info: context_info, geometry: geometry, layerName: layerName });
-            });
-            // console.log(req.params.user_id)
-            // console.log(req.body)
-            // let features = ''
-            // const geom_id = 
-            // featureCollection.features.forEach(x=>{
-            //   const string_values = ((geom_id, user_id, x.geom.strinfia())
-            // })
-            // try {
-            //     const deleteResults = db.query(
-            //       `INSERT INTO geometries (geom_id, user_id, geom) values ${string_values}`, 
-            //       [user_id]
-            //     );
-            res.status(200).json({
-                status: "success",
-                results: "hi"
-            });
-            return [2 /*return*/];
+            switch (_b.label) {
+                case 0:
+                    console.log('fetching geometries from database serverside.');
+                    _a = req.params, user = _a.user, layer_id = _a.layer_id;
+                    console.log(user, layer_id);
+                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id\n    FROM user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\t  INNER JOIN users u ON g.user_id = u.id\n    WHERE u.username = '" + user + "' AND g.layer_id = " + layer_id + "\n    ORDER BY g.layer_id";
+                    geomBin = [];
+                    propertyBin = [];
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _b.sent();
+                    console.log(dbResponse);
+                    dbResponse.rows.forEach(function (row) {
+                        var geom = row.geom, layer_id = row.layer_id, layer_name = row.layer_name, geom_id = row.geom_id;
+                        var _a = JSON.parse(geom).coordinates, lat = _a[0], lng = _a[1];
+                        geomBin.push([lat, lng]);
+                        propertyBin.push({ geom_id: geom_id });
+                    });
+                    geoJSON = generateGeojson(geomBin, propertyBin);
+                    console.log(geoJSON);
+                    res.status(200).json({
+                        status: "success",
+                        results: geoJSON
+                    });
+                    return [3 /*break*/, 4];
+                case 3:
+                    err_43 = _b.sent();
+                    console.log(err_43);
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
+            }
         });
     });
 }
-// const { user_id } = req.params;
-// const { geometries } = req.body;
-// let temp = [];
-// geometries.forEach((geom) => {
-//   const { geometry_id, geometry } = geom;
-//   /// formatting away double quotes. PSQL seems to only accept single quotes around the geojson
-//   const formattedGeometry = "'" + geometry + "'";
-//   temp.push(
-//     `(${geometry_id}, ${user_id}, ST_GeomFromGeoJSON(${formattedGeometry}))`
-//   );
-// });
-// const updated_geometries = temp.join(",");
-// try {
-//   const deleteResults = db.query(
-//     "DELETE FROM geometries WHERE user_id = $1", 
-//     [user_id]
-//   );
-//   const update_geoms =
-//     "INSERT INTO geometries (geometry_id, user_id, geom) VALUES " + updated_geometries;
-//   console.log(text);
-//   const results = await db.query(update_geoms);
-//   res.status(200).json({
-//     status: "success",
-//     results: results.rows[0],
-//   });
-// } catch (err) {
-//   console.log(err);
-// }
-// };
+;
 function send_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var body;
         return __generator(this, function (_a) {
-            console.log('send geoms received serverside');
-            body = req.body;
-            console.log(body);
-            return [2 /*return*/, res.status(200).json({
-                    status: 'success',
-                    message: 'hello world',
-                    "function": 'send_geoms'
-                })];
+            return [2 /*return*/];
         });
     });
 }
@@ -2568,6 +2564,8 @@ router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 router.route('/send_geoms').post(send_geoms);
+router.route('/get_user_layer_metadata/:user').get(get_user_layer_metadata);
+router.route('/get_layer_geoms/:user/:layer_id').get(get_layer_geoms);
 // router.route('/send_to_DB/:user_id').post(send_to_DB);
 // router.route('/get_user_geometries/:user_id').get(get_user_geometries);
 // TODO: This should take a post of a JSON object and batch process --> return.
