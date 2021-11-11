@@ -865,7 +865,7 @@ function pop_density_isochrone_car(req, res) {
                     response = _a.sent();
                     console.log(response);
                     isochrone = JSON.stringify(response);
-                    dbQuery = "\n    SELECT popDens_apiCar(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
                     console.log(dbQuery);
                     _a.label = 2;
                 case 2:
@@ -1022,7 +1022,7 @@ function nearest_placename(req, res) {
                                 "function": 'nearest_placename'
                             })];
                     }
-                    dbQuery = "\n    SELECT fclass, name FROM ghana_places\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT fclass, name FROM gh_tz_places\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1074,7 +1074,7 @@ function nearest_poi(req, res) {
                                 "function": 'nearest_poi'
                             })];
                     }
-                    dbQuery = "\n    SELECT fclass, name FROM ghana_poi\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT fclass, name FROM gh_tz_poi\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1145,7 +1145,7 @@ function get_banks(req, res) {
                         }
                         target = Number(req.query.target);
                     }
-                    dbQuery = "\n    SELECT\n      \"name\",\n      round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\"\n    FROM ghana_poi\n    WHERE \"fclass\" = 'bank' AND (LOWER(\"name\") LIKE '%" + String(name).toLowerCase() + "%' OR similarity(\"name\", '" + name + "') > " + target + ")\n    ORDER BY SIMILARITY(\"name\", 'absa') DESC;\n  ";
+                    dbQuery = "\n    SELECT\n      \"name\",\n      round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\"\n    FROM gh_tz_poi\n    WHERE \"fclass\" = 'bank' AND (LOWER(\"name\") LIKE '%" + String(name).toLowerCase() + "%' OR similarity(\"name\", '" + name + "') > " + target + ")\n    ORDER BY SIMILARITY(\"name\", 'absa') DESC;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1198,7 +1198,7 @@ function nearest_bank(req, res) {
                                 "function": 'nearest_bank'
                             })];
                     }
-                    dbQuery = "\n    SELECT \"name\"\n    FROM public.ghana_poi\n    WHERE fclass = 'bank'\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT \"name\"\n    FROM public.gh_tz_poi\n    WHERE fclass = 'bank'\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1250,7 +1250,7 @@ function nearest_bank_distance(req, res) {
                                 "function": 'nearest_bank_distance'
                             })];
                     }
-                    dbQuery = "\n    SELECT ST_Distance(ghana_poi.\"geom\"::geography, ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography)::int AS \"distance\"\n    FROM public.ghana_poi WHERE fclass='bank'\n    ORDER BY St_Transform(geom, 4326) <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT ST_Distance(gh_tz_poi.\"geom\"::geography, ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography)::int AS \"distance\"\n    FROM public.gh_tz_poi WHERE fclass='bank'\n    ORDER BY St_Transform(geom, 4326) <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);

@@ -799,7 +799,7 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
-    SELECT popDens_apiCar(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
   `;
     console.log(dbQuery)
   try {
@@ -934,7 +934,7 @@ async function nearest_placename(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    SELECT fclass, name FROM ghana_places
+    SELECT fclass, name FROM gh_tz_places
     ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
   `;
@@ -981,7 +981,7 @@ async function nearest_poi(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    SELECT fclass, name FROM ghana_poi
+    SELECT fclass, name FROM gh_tz_poi
     ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
   `;
@@ -1055,7 +1055,7 @@ async function get_banks(req:Request, res:Response) {
       "name",
       round(ST_X("geom")::numeric, 6) AS "lng",
       round(ST_Y("geom")::numeric, 6) AS "lat"
-    FROM ghana_poi
+    FROM gh_tz_poi
     WHERE "fclass" = 'bank' AND (LOWER("name") LIKE '%${String(name).toLowerCase()}%' OR similarity("name", '${name}') > ${target})
     ORDER BY SIMILARITY("name", 'absa') DESC;
   `;
@@ -1106,7 +1106,7 @@ async function nearest_bank(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT "name"
-    FROM public.ghana_poi
+    FROM public.gh_tz_poi
     WHERE fclass = 'bank'
     ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
@@ -1154,8 +1154,8 @@ async function nearest_bank_distance(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    SELECT ST_Distance(ghana_poi."geom"::geography, ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography)::int AS "distance"
-    FROM public.ghana_poi WHERE fclass='bank'
+    SELECT ST_Distance(gh_tz_poi."geom"::geography, ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography)::int AS "distance"
+    FROM public.gh_tz_poi WHERE fclass='bank'
     ORDER BY St_Transform(geom, 4326) <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
   `;
