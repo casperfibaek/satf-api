@@ -225,7 +225,7 @@ function admin_level_1(req, res) {
                                 "function": 'admin_level_1'
                             })];
                     }
-                    dbQuery = "\n        SELECT \"adm1_name\" AS adm1\n        FROM public.ghana_admin\n        WHERE\n            ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n        LIMIT 1;\n    ";
+                    dbQuery = "\n        SELECT \"adm1_name\" AS adm1\n        FROM public.gh_tza_admin\n        WHERE\n            ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n        LIMIT 1;\n    ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -277,7 +277,7 @@ function admin_level_2(req, res) {
                                 "function": 'admin_level_2'
                             })];
                     }
-                    dbQuery = "\n    SELECT \"adm2_name\" AS adm2\n    FROM public.ghana_admin\n    WHERE\n        ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT \"adm2_name\" AS adm2\n    FROM public.gh_tza_admin\n    WHERE\n        ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -343,7 +343,7 @@ function admin_level_2_fuzzy_tri(req, res) {
                                 "function": 'admin_level_2_fuzzy_tri'
                             })];
                     }
-                    dbQuery = "\n    SELECT adm2_name as name\n    FROM ghana_admin\n    ORDER BY SIMILARITY(adm2_name, '" + req.query.name + "') DESC\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY SIMILARITY(adm2_name, '" + req.query.name + "') DESC\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -388,7 +388,7 @@ function admin_level_2_fuzzy_lev(req, res) {
                                 "function": 'admin_level_2_fuzzy_lev'
                             })];
                     }
-                    dbQuery = "\n    SELECT adm2_name as name\n    FROM ghana_admin\n    ORDER BY LEVENSHTEIN(adm2_name, '" + req.query.name + "') ASC\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY LEVENSHTEIN(adm2_name, '" + req.query.name + "') ASC\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);

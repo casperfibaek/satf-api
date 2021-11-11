@@ -187,9 +187,9 @@ async function admin_level_1(req:Request, res:Response) {
 
   const dbQuery = `
         SELECT "adm1_name" AS adm1
-        FROM public.ghana_admin
+        FROM public.gh_tza_admin
         WHERE
-            ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
+            ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
         LIMIT 1;
     `;
 
@@ -236,12 +236,12 @@ async function admin_level_2(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT "adm2_name" AS adm2
-    FROM public.ghana_admin
+    FROM public.gh_tza_admin
     WHERE
-        ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
+        ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
     LIMIT 1;
   `;
-
+  
   try {
     const dbResponse = await pool.query(dbQuery);
     if (dbResponse.rowCount > 0) {
@@ -296,7 +296,7 @@ async function admin_level_2_fuzzy_tri(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT adm2_name as name
-    FROM ghana_admin
+    FROM gh_tza_admin
     ORDER BY SIMILARITY(adm2_name, '${req.query.name}') DESC
     LIMIT 1;
   `;
@@ -336,7 +336,7 @@ async function admin_level_2_fuzzy_lev(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT adm2_name as name
-    FROM ghana_admin
+    FROM gh_tza_admin
     ORDER BY LEVENSHTEIN(adm2_name, '${req.query.name}') ASC
     LIMIT 1;
   `;
