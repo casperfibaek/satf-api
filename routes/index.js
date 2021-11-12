@@ -1941,7 +1941,7 @@ function delete_user(req, res) {
 // Getting time and distance from A to B
 function a_to_b_time_distance_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_33;
+        var profile, directions, err_33;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1959,25 +1959,17 @@ function a_to_b_time_distance_walk(req, res) {
                                 "function": 'a_to_b_time_distance_walk'
                             })];
                     }
-                    dbQuery = "\n    SELECT pgr_timeDist_walk('" + req.query.lng1 + "', '" + req.query.lat1 + "', '" + req.query.lng2 + "', '" + req.query.lat2 + "');\n  ";
+                    profile = "walking";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
-                        return [2 /*return*/, res.status(200).json({
-                                status: 'success',
-                                message: { time: rep[0], distance: rep[1] },
-                                "function": 'a_to_b_time_distance_walk'
-                            })];
-                    }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_walk'
+                    directions = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            "function": "a_to_b_time_distance_walk"
                         })];
                 case 3:
                     err_33 = _a.sent();
@@ -1995,7 +1987,7 @@ function a_to_b_time_distance_walk(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_34;
+        var profile, directions, err_34;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2013,25 +2005,17 @@ function a_to_b_time_distance_bike(req, res) {
                                 "function": 'a_to_b_time_distance_bike'
                             })];
                     }
-                    dbQuery = "\n    SELECT pgr_timeDist_bike('" + req.query.lng1 + "', '" + req.query.lat1 + "', '" + req.query.lng2 + "', '" + req.query.lat2 + "');\n  ";
+                    profile = "cycling";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
-                        return [2 /*return*/, res.status(200).json({
-                                status: 'success',
-                                message: { time: rep[0], distance: rep[1] },
-                                "function": 'a_to_b_time_distance_bike'
-                            })];
-                    }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_bike'
+                    directions = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            "function": "a_to_b_time_distance_bike"
                         })];
                 case 3:
                     err_34 = _a.sent();
@@ -2046,10 +2030,10 @@ function a_to_b_time_distance_bike(req, res) {
         });
     });
 }
-// A to B Biking function
+// A to B driving function
 function a_to_b_time_distance_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_35;
+        var profile, directions, err_35;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2067,33 +2051,25 @@ function a_to_b_time_distance_car(req, res) {
                                 "function": 'a_to_b_time_distance_car'
                             })];
                     }
-                    dbQuery = "\n    SELECT pgr_timeDist_car('" + req.query.lng1 + "', '" + req.query.lat1 + "', '" + req.query.lng2 + "', '" + req.query.lat2 + "');\n  ";
+                    profile = "driving";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
-                        return [2 /*return*/, res.status(200).json({
-                                status: 'success',
-                                message: { time: rep[0], distance: rep[1] },
-                                "function": 'a_to_b_time_distance_car'
-                            })];
-                    }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_car'
+                    directions = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            "function": "a_to_b_time_distance_car"
                         })];
                 case 3:
                     err_35 = _a.sent();
                     console.log(err_35);
                     return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_car'
+                            status: "failure",
+                            message: "Error encountered on server",
+                            "function": "a_to_b_time_distance_car"
                         })];
                 case 4: return [2 /*return*/];
             }
@@ -2303,7 +2279,7 @@ function get_forecast(req, res) {
                         return {
                             date: format_time_1(dt),
                             description: weather[0].description,
-                            icon: weather[0].icon,
+                            // icon: weather[0].icon,
                             temp_min: temp.min,
                             temp_max: temp.max,
                             humidity: humidity,
@@ -2376,7 +2352,7 @@ function get_api_isochrone(req, res) {
         });
     });
 }
-// grasshopper internal isochrone function
+// mmapbox internal isochrone function
 function _get_isochrone(profile, lng, lat, minutes) {
     return __awaiter(this, void 0, void 0, function () {
         var key, response, data, isochrone, err_41;
@@ -2405,12 +2381,84 @@ function _get_isochrone(profile, lng, lat, minutes) {
         });
     });
 }
+function get_api_directions(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, profile, lng1, lat1, lng2, lat2, directions, err_42;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "get_directions"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat1) || !(0, validators_1.isValidLatitude)(req.query.lng1) || !(0, validators_1.isValidLatitude)(req.query.lat2) || !(0, validators_1.isValidLatitude)(req.query.lng2)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "get_directions"
+                            })];
+                    }
+                    _a = req.query, profile = _a.profile, lng1 = _a.lng1, lat1 = _a.lat1, lng2 = _a.lng2, lat2 = _a.lat2;
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, _get_directions(profile, lng1, lat1, lng2, lat2)];
+                case 2:
+                    directions = _b.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: directions.duration / 60, distance: directions.distance / 1000 },
+                            "function": "get_directions"
+                        })];
+                case 3:
+                    err_42 = _b.sent();
+                    console.log(err_42);
+                    return [2 /*return*/, res.status(500).json({
+                            status: "failure",
+                            message: "Error encountered on server",
+                            "function": "get_directions"
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+function _get_directions(profile, lng1, lat1, lng2, lat2) {
+    return __awaiter(this, void 0, void 0, function () {
+        var key, response, data, directions, err_43;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3Z2ZXJidXUwM3FsMm9vZTUyMjZheTdrIn0._fsu4H3LZcTpKBxkRaQR_g";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 4, , 5]);
+                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/directions/v5/mapbox/" + profile + "/" + lng1 + "," + lat1 + ";" + lng2 + "," + lat2 + "?access_token=" + key)];
+                case 2:
+                    response = _a.sent();
+                    return [4 /*yield*/, response.data];
+                case 3:
+                    data = _a.sent();
+                    directions = data.routes[0];
+                    return [2 /*return*/, directions];
+                case 4:
+                    err_43 = _a.sent();
+                    console.log(err_43);
+                    return [3 /*break*/, 5];
+                case 5: return [2 /*return*/];
+            }
+        });
+    });
+}
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
 function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user, dbQuery, dbResponse, err_42;
+        var user, dbQuery, dbResponse, err_44;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2430,8 +2478,8 @@ function get_user_layer_metadata(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_42 = _a.sent();
-                    console.log(err_42);
+                    err_44 = _a.sent();
+                    console.log(err_44);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2468,7 +2516,7 @@ function get_layer_geoms(req, res) {
             }
             return collection;
         }
-        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_43;
+        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2499,8 +2547,8 @@ function get_layer_geoms(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_43 = _b.sent();
-                    console.log(err_43);
+                    err_45 = _b.sent();
+                    console.log(err_45);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2558,6 +2606,7 @@ router.route('/oci_coverage').get(auth_1["default"], oci_coverage);
 router.route('/mce_coverage').get(auth_1["default"], mce_coverage);
 router.route('/get_forecast').get(auth_1["default"], get_forecast);
 router.route('/get_api_isochrone').get(auth_1["default"], get_api_isochrone);
+router.route('/get_api_directions').get(auth_1["default"], get_api_directions);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);

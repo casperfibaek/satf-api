@@ -1796,26 +1796,36 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_walk('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
+  const profile = "walking"
+    try {
 
-  try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_walk',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_walk',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_walk",
     } as ApiResponse);
+  // function without output of minutes and distance in meters from A to B
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_walk('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     const rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_walk',
+  //     } as ApiResponse);
+  //   }
+  //   return res.status(500).json({
+  //     status: 'failure',
+  //     message: 'Error while calculating time and distance',
+  //     function: 'a_to_b_time_distance_walk',
+  //   } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1844,26 +1854,33 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_bike('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
-
+  const profile = "cycling"
+ 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_bike',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_bike',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_bike",
     } as ApiResponse);
+
+  // // function without output of minutes and distance in meters from A to B
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_bike('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_bike',
+  //     } as ApiResponse);
+  //   }
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1874,7 +1891,7 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
   }
 }
 
-// A to B Biking function
+// A to B driving function
 async function a_to_b_time_distance_car(req:Request, res:Response) {
   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
     return res.status(400).json({
@@ -1892,32 +1909,40 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_car('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
-
+  const profile = "driving"
+  
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_car',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_car',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_car",
     } as ApiResponse);
+ 
+  // function without output of minutes and distance in meters from A to B - inactive since there's pgrouting on new database
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_car('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   // const dbResponse = await pool.query(dbQuery);
+  //   // if (dbResponse.rowCount > 0) {
+  //   //   const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_car',
+  //     } as ApiResponse);
+
   } catch (err) {
     console.log(err);
+
     return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_car',
+      status: "failure",
+      message: "Error encountered on server",
+      function: "a_to_b_time_distance_car",
     } as ApiResponse);
   }
 }
@@ -2097,7 +2122,7 @@ async function get_forecast(req: Request, res: Response) {
       return {
         date: format_time(dt),
         description: weather[0].description,
-        icon: weather[0].icon,
+        // icon: weather[0].icon,
         temp_min: temp.min, 
         temp_max: temp.max,
         humidity,
@@ -2169,7 +2194,7 @@ async function get_api_isochrone(req, res) {
 
 }
 
-// grasshopper internal isochrone function
+// mmapbox internal isochrone function
 
 async function _get_isochrone(profile, lng, lat, minutes) {
 
@@ -2187,6 +2212,69 @@ async function _get_isochrone(profile, lng, lat, minutes) {
     console.log(isochrone);
     
     return isochrone
+    }
+  
+  catch (err) {
+    console.log(err)
+  }
+  
+}
+
+async function get_api_directions(req, res) {
+
+   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+
+  const {profile, lng1, lat1, lng2, lat2} = req.query
+  try {
+
+
+  const directions = await _get_directions(profile, lng1, lat1, lng2, lat2)
+
+
+      return res.status(200).json({
+      status: "success",
+      message: { time: directions.duration/60, distance: directions.distance/1000 },
+      function: "get_directions",
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: "failure",
+      message: "Error encountered on server",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+
+}
+
+async function _get_directions(profile, lng1, lat1, lng2, lat2) {
+
+  // }
+  var key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3Z2ZXJidXUwM3FsMm9vZTUyMjZheTdrIn0._fsu4H3LZcTpKBxkRaQR_g";
+  try {
+    // const time_min = minutes*60
+
+    const response = await axios(
+      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?access_token=" + key);
+    const data = await response.data;
+    
+    const directions = data.routes[0];
+    
+    return directions
     }
   
   catch (err) {
@@ -2434,6 +2522,7 @@ router.route('/oci_coverage').get(auth, oci_coverage);
 router.route('/mce_coverage').get(auth, mce_coverage);
 router.route('/get_forecast').get(auth, get_forecast);
 router.route('/get_api_isochrone').get(auth, get_api_isochrone);
+router.route('/get_api_directions').get(auth, get_api_directions);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
