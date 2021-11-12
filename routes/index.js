@@ -787,7 +787,7 @@ function population_density_car(req, res) {
 // New Function - population density in walking distance
 function pop_density_isochrone_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_12;
+        var profile, response, isochrone, dbQuery, dbResponse, err_12;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -805,17 +805,23 @@ function pop_density_isochrone_walk(req, res) {
                                 "function": 'pop_density_isochrone_walk'
                             })];
                     }
-                    dbQuery = "\n    SELECT popDensWalk('" + req.query.lng + "', '" + req.query.lat + "', '" + req.query.minutes + "') as pop_dense_iso_walk;\n  ";
-                    _a.label = 1;
+                    profile = "walking";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    console.log(response);
+                    isochrone = JSON.stringify(response);
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_walk;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+                                message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_walk'])),
                                 "function": 'pop_density_isochrone_walk'
                             })];
                     }
@@ -824,7 +830,7 @@ function pop_density_isochrone_walk(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_walk'
                         })];
-                case 3:
+                case 4:
                     err_12 = _a.sent();
                     console.log(err_12);
                     return [2 /*return*/, res.status(500).json({
@@ -832,7 +838,7 @@ function pop_density_isochrone_walk(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_walk'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
@@ -840,7 +846,7 @@ function pop_density_isochrone_walk(req, res) {
 // New Function - population density in biking distance
 function pop_density_isochrone_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_13;
+        var profile, response, isochrone, dbQuery, dbResponse, err_13;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -858,26 +864,46 @@ function pop_density_isochrone_bike(req, res) {
                                 "function": 'pop_density_isochrone_bike'
                             })];
                     }
-                    dbQuery = "\n    SELECT popDensBike('" + req.query.lng + "', '" + req.query.lat + "', '" + req.query.minutes + "') as pop_dense_iso_bike;\n  ";
-                    _a.label = 1;
+                    profile = "cycling";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    console.log(response);
+                    isochrone = JSON.stringify(response);
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_bike;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+                                message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_bike'])),
                                 "function": 'pop_density_isochrone_bike'
                             })];
                     }
+                    // Inactive due to new Db not supporting pgrouting
+                    // // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+                    // const dbQuery = `
+                    //   SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+                    // `;
+                    // try {
+                    //   const dbResponse = await pool.query(dbQuery);
+                    //   if (dbResponse.rowCount > 0) {
+                    //     return res.status(200).json({
+                    //       status: 'success',
+                    //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+                    //       function: 'pop_density_isochrone_bike',
+                    //     } as ApiResponse);
+                    //   }
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_bike'
                         })];
-                case 3:
+                case 4:
                     err_13 = _a.sent();
                     console.log(err_13);
                     return [2 /*return*/, res.status(500).json({
@@ -885,12 +911,12 @@ function pop_density_isochrone_bike(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_bike'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
 }
-// New Function - population density in driving distance - using api grasshopper
+// New Function - population density in driving distance - using api mapbox
 function pop_density_isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var profile, response, isochrone, dbQuery, dbResponse, err_14;
@@ -915,7 +941,6 @@ function pop_density_isochrone_car(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    console.log(response);
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
                     console.log(dbQuery);

@@ -761,18 +761,39 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
       function: 'pop_density_isochrone_walk',
     } as ApiResponse);
   }
+// Inactive due to new Db not supporting pgrouting
+  // // function collecting all values from raster ghana_pop_dens inside the isochrone of walking distance
+  // const dbQuery = `
+  //   SELECT popDensWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_walk;
+  // `;
 
-  // function collecting all values from raster ghana_pop_dens inside the isochrone of walking distance
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+  //       function: 'pop_density_isochrone_walk',
+  //     } as ApiResponse);
+  //   }
+
+  const profile = "walking"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+  console.log(response)
+  const isochrone = JSON.stringify(response) 
+
   const dbQuery = `
-    SELECT popDensWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_walk;
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_walk;
   `;
-
+  
   try {
     const dbResponse = await pool.query(dbQuery);
+    
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+        message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_walk'])),
         function: 'pop_density_isochrone_walk',
       } as ApiResponse);
     }
@@ -808,20 +829,41 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+  const profile = "cycling"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+  console.log(response)
+  const isochrone = JSON.stringify(response) 
+
   const dbQuery = `
-    SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_bike;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
+    
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+        message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_bike'])),
         function: 'pop_density_isochrone_bike',
       } as ApiResponse);
     }
+// Inactive due to new Db not supporting pgrouting
+  // // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+  // const dbQuery = `
+  //   SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+  //       function: 'pop_density_isochrone_bike',
+  //     } as ApiResponse);
+  //   }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
@@ -836,7 +878,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
-// New Function - population density in driving distance - using api grasshopper
+// New Function - population density in driving distance - using api mapbox
 async function pop_density_isochrone_car(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
@@ -857,7 +899,7 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   // const { lat, lng, minutes } = req.query
   const profile = "driving"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-  console.log(response)
+ 
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
