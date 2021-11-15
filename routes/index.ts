@@ -13,6 +13,10 @@ import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 import { callbackify } from 'util';
 
+import axios from "axios"
+
+const os = require("os")
+
 const version = '0.2.2';
 
 interface ApiResponse {
@@ -183,9 +187,9 @@ async function admin_level_1(req:Request, res:Response) {
 
   const dbQuery = `
         SELECT "adm1_name" AS adm1
-        FROM public.ghana_admin
+        FROM public.gh_tza_admin
         WHERE
-            ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
+            ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
         LIMIT 1;
     `;
 
@@ -232,12 +236,12 @@ async function admin_level_2(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT "adm2_name" AS adm2
-    FROM public.ghana_admin
+    FROM public.gh_tza_admin
     WHERE
-        ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
+        ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
     LIMIT 1;
   `;
-
+  
   try {
     const dbResponse = await pool.query(dbQuery);
     if (dbResponse.rowCount > 0) {
@@ -263,9 +267,20 @@ async function admin_level_2(req:Request, res:Response) {
 }
 
 async function api_version(req:Request, res:Response) {
+  const host = req.get('host')
+  const origin = req.headers.origin
+  // CLient environment
+  // req.hostname, req.origin
+  
+  // console.log(os.hostname())
+  // console.log(host)
+  console.log(req)
+  // api envrinoment
+  // os.hostname()
+
   return res.status(200).json({
     status: 'success',
-    message: version,
+    message: { "version": version, "api_environment": host, "client_environment": origin },
     function: 'api_version',
   } as ApiResponse);
 }
@@ -281,7 +296,7 @@ async function admin_level_2_fuzzy_tri(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT adm2_name as name
-    FROM ghana_admin
+    FROM gh_tza_admin
     ORDER BY SIMILARITY(adm2_name, '${req.query.name}') DESC
     LIMIT 1;
   `;
@@ -321,7 +336,7 @@ async function admin_level_2_fuzzy_lev(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT adm2_name as name
-    FROM ghana_admin
+    FROM gh_tza_admin
     ORDER BY LEVENSHTEIN(adm2_name, '${req.query.name}') ASC
     LIMIT 1;
   `;
@@ -499,6 +514,68 @@ async function population_density_buffer(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
+
+async function population_buffer(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng or buffer',
+      function: 'population_buffer',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'population_buffer',
+    } as ApiResponse);
+  }
+
+  const dbQuery = `
+    WITH buf AS (
+      SELECT ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${req.query.buffer}'
+      )::geometry As geom
+    ),
+    query AS(
+      SELECT 
+        SUM((ST_SummaryStats(ST_Clip(a.rast, geom), 1)).sum)::int AS daytime,
+        SUM((ST_SummaryStats(ST_Clip(b.rast, geom), 1)).sum)::int AS nighttime,
+        SUM((ST_SummaryStats(ST_Clip(c.rast, geom), 1)).sum)::int AS unweighted
+      FROM buf p
+      LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(p.geom, a.rast))
+      LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(p.geom, b.rast))
+      LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(p.geom, c.rast))
+    )
+    SELECT json_agg(json_build_array('daytime:', daytime, 'nighttime:', nighttime, 'unweighted:', unweighted))
+    as population_buf
+    FROM query;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].population_buf,
+        function: 'population_buffer',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'population_buffer',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'population_buffer',
+    } as ApiResponse);
+  }
+}
+
 
 async function population_density_walk(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
@@ -684,18 +761,39 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
       function: 'pop_density_isochrone_walk',
     } as ApiResponse);
   }
+// Inactive due to new Db not supporting pgrouting
+  // // function collecting all values from raster ghana_pop_dens inside the isochrone of walking distance
+  // const dbQuery = `
+  //   SELECT popDensWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_walk;
+  // `;
 
-  // function collecting all values from raster ghana_pop_dens inside the isochrone of walking distance
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+  //       function: 'pop_density_isochrone_walk',
+  //     } as ApiResponse);
+  //   }
+
+  const profile = "walking"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+  console.log(response)
+  const isochrone = JSON.stringify(response) 
+
   const dbQuery = `
-    SELECT popDensWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_walk;
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_walk;
   `;
-
+  
   try {
     const dbResponse = await pool.query(dbQuery);
+    
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+        message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_walk'])),
         function: 'pop_density_isochrone_walk',
       } as ApiResponse);
     }
@@ -731,20 +829,41 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+  const profile = "cycling"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+  console.log(response)
+  const isochrone = JSON.stringify(response) 
+
   const dbQuery = `
-    SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_bike;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
+    
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+        message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_bike'])),
         function: 'pop_density_isochrone_bike',
       } as ApiResponse);
     }
+// Inactive due to new Db not supporting pgrouting
+  // // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+  // const dbQuery = `
+  //   SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+  //       function: 'pop_density_isochrone_bike',
+  //     } as ApiResponse);
+  //   }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
@@ -759,7 +878,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
-// New Function - population density in driving distance
+// New Function - population density in driving distance - using api mapbox
 async function pop_density_isochrone_car(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
@@ -777,17 +896,24 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function collecting all values from raster ghana_pop_dens inside the isochrone of driving distance
-  const dbQuery = `
-    SELECT popDensCar('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_car;
-  `;
+  // const { lat, lng, minutes } = req.query
+  const profile = "driving"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+ 
+  const isochrone = JSON.stringify(response) 
 
+  const dbQuery = `
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
+  `;
+    console.log(dbQuery)
   try {
     const dbResponse = await pool.query(dbQuery);
+    
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_car)),
+        message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_car'])),
         function: 'pop_density_isochrone_car',
       } as ApiResponse);
     }
@@ -912,7 +1038,7 @@ async function nearest_placename(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    SELECT fclass, name FROM ghana_places
+    SELECT fclass, name FROM gh_tz_places
     ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
   `;
@@ -959,7 +1085,7 @@ async function nearest_poi(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    SELECT fclass, name FROM ghana_poi
+    SELECT fclass, name FROM gh_tz_poi
     ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
   `;
@@ -1033,7 +1159,7 @@ async function get_banks(req:Request, res:Response) {
       "name",
       round(ST_X("geom")::numeric, 6) AS "lng",
       round(ST_Y("geom")::numeric, 6) AS "lat"
-    FROM ghana_poi
+    FROM gh_tz_poi
     WHERE "fclass" = 'bank' AND (LOWER("name") LIKE '%${String(name).toLowerCase()}%' OR similarity("name", '${name}') > ${target})
     ORDER BY SIMILARITY("name", 'absa') DESC;
   `;
@@ -1084,7 +1210,7 @@ async function nearest_bank(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT "name"
-    FROM public.ghana_poi
+    FROM public.gh_tz_poi
     WHERE fclass = 'bank'
     ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
@@ -1132,8 +1258,8 @@ async function nearest_bank_distance(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    SELECT ST_Distance(ghana_poi."geom"::geography, ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography)::int AS "distance"
-    FROM public.ghana_poi WHERE fclass='bank'
+    SELECT ST_Distance(gh_tz_poi."geom"::geography, ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography)::int AS "distance"
+    FROM public.gh_tz_poi WHERE fclass='bank'
     ORDER BY St_Transform(geom, 4326) <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
     LIMIT 1;
   `;
@@ -1712,26 +1838,36 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_walk('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
+  const profile = "walking"
+    try {
 
-  try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_walk',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_walk',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_walk",
     } as ApiResponse);
+  // function without output of minutes and distance in meters from A to B
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_walk('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     const rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_walk',
+  //     } as ApiResponse);
+  //   }
+  //   return res.status(500).json({
+  //     status: 'failure',
+  //     message: 'Error while calculating time and distance',
+  //     function: 'a_to_b_time_distance_walk',
+  //   } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1760,26 +1896,33 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_bike('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
-
+  const profile = "cycling"
+ 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_bike',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_bike',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_bike",
     } as ApiResponse);
+
+  // // function without output of minutes and distance in meters from A to B
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_bike('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_bike',
+  //     } as ApiResponse);
+  //   }
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1790,7 +1933,7 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
   }
 }
 
-// A to B Biking function
+// A to B driving function
 async function a_to_b_time_distance_car(req:Request, res:Response) {
   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
     return res.status(400).json({
@@ -1808,53 +1951,405 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
+  const profile = "driving"
+  
+  try {
+
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
+      return res.status(200).json({
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_car",
+    } as ApiResponse);
+ 
+  // function without output of minutes and distance in meters from A to B - inactive since there's pgrouting on new database
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_car('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   // const dbResponse = await pool.query(dbQuery);
+  //   // if (dbResponse.rowCount > 0) {
+  //   //   const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_car',
+  //     } as ApiResponse);
+
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: "failure",
+      message: "Error encountered on server",
+      function: "a_to_b_time_distance_car",
+    } as ApiResponse);
+  }
+}
+
+//network coverage functions
+//1. gets coverage network from both data sources (MCE and OCI)
+
+async function network_coverage(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng',
+      function: 'network_coverage',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'network_coverage',
+    } as ApiResponse);
+  }
   const dbQuery = `
-    SELECT pgr_timeDist_car('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+    SELECT network_coverage('${req.query.lng}', '${req.query.lat}') as coverage;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
     if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
       return res.status(200).json({
         status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_car',
+        message: dbResponse.rows[0].coverage,
+        function: 'network_coverage',
       } as ApiResponse);
     }
     return res.status(500).json({
       status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_car',
+      message: 'Error encountered on server',
+      function: 'network_coverage',
     } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
       status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_car',
+      message: 'Error encountered on server',
+      function: 'network_coverage',
     } as ApiResponse);
   }
+}
+
+// 2. Gets data coverage from OCI source 
+async function oci_coverage(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  }
+  const dbQuery = `
+    SELECT oci_coverage('${req.query.lng}', '${req.query.lat}') as coverage;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].coverage,
+        function: 'oci_coverage',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'oci_coverage',
+    } as ApiResponse);
+  }
+}
+
+// 3. Gets data coverage from MCE source
+async function mce_coverage(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat, lng',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  }
+  const dbQuery = `
+    SELECT mce_coverage('${req.query.lng}', '${req.query.lat}') as coverage;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].coverage,
+        function: 'mce_coverage',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'mce_coverage',
+    } as ApiResponse);
+  }
+}
+
+// get weather forecats for 7 days from Open Weather api - string output for now
+
+async function get_forecast(req: Request, res: Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "get_forecast",
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "get_forecast",
+    } as ApiResponse);
+  }
+  var key = "058aa5a4622d21864fcbafbb8c28a128";
+  try {
+    const response = await axios(
+      "https://api.openweathermap.org/data/2.5/onecall?lat=" +
+        req.query.lat +
+        "&lon=" +
+        req.query.lng + 
+        "&exclude=current,minutely,hourly" +
+        "&units=metric&appid=" +
+        key
+    );
+    const data = await response.data;
+
+    const format_time = (s) => new Date(s * 1e3).toISOString().slice(0,-14);
+
+    const list_forecast = data.daily.map(( props ) => {
+      const { weather, dt, temp, humidity, rain, clouds, icon } = props
+      return {
+        date: format_time(dt),
+        description: weather[0].description,
+        // icon: weather[0].icon,
+        temp_min: temp.min, 
+        temp_max: temp.max,
+        humidity,
+        rain,
+        clouds
+
+      } 
+    }); 
+
+    return res.status(200).json({
+      status: "success",
+      message: list_forecast,
+      function: "get_forecast",
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: "failure",
+      message: "Error encountered on server",
+      function: "get_forecast",
+    } as ApiResponse);
+  }
+}
+
+// function to get api isochrone 
+
+async function get_api_isochrone(req, res) {
+
+   if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "get_isochrone",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "get_isochrone",
+    } as ApiResponse);
+  }
+
+  const {profile, lng, lat, minutes} = req.query
+  try {
+
+
+  const isochrone = await _get_isochrone(profile, lng, lat, minutes)
+
+  console.log(isochrone)
+
+
+
+      return res.status(200).json({
+      status: "success",
+      message: isochrone,
+      function: "get_isochrone",
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: "failure",
+      message: "Error encountered on server",
+      function: "get_isochrone",
+    } as ApiResponse);
+  }
+
+}
+
+// mmapbox internal isochrone function
+
+async function _get_isochrone(profile, lng, lat, minutes) {
+
+  // }
+  var key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3ZrczhwdnEwaGRzMm91Z2ZoZ3M2ZnVmIn0.qoKWjMVtpxQvMqSahsRUgA";
+  try {
+    // const time_min = minutes*60
+
+    const response = await axios(
+      "https://api.mapbox.com/isochrone/v1/mapbox/"+ profile + "/" + lng + "," + lat + "?contours_minutes="+ minutes + "&polygons=true&access_token=" + key);
+    const data = await response.data;
+    
+    const isochrone = data.features[0].geometry;
+
+    console.log(isochrone);
+    
+    return isochrone
+    }
+  
+  catch (err) {
+    console.log(err)
+  }
+  
+}
+
+async function get_api_directions(req, res) {
+
+   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+
+  const {profile, lng1, lat1, lng2, lat2} = req.query
+  try {
+
+
+  const directions = await _get_directions(profile, lng1, lat1, lng2, lat2)
+
+
+      return res.status(200).json({
+      status: "success",
+      message: { time: directions.duration/60, distance: directions.distance/1000 },
+      function: "get_directions",
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: "failure",
+      message: "Error encountered on server",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+
+}
+
+async function _get_directions(profile, lng1, lat1, lng2, lat2) {
+
+  // }
+  var key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3Z2ZXJidXUwM3FsMm9vZTUyMjZheTdrIn0._fsu4H3LZcTpKBxkRaQR_g";
+  try {
+    // const time_min = minutes*60
+
+    const response = await axios(
+      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?access_token=" + key);
+    const data = await response.data;
+    
+    const directions = data.routes[0];
+    
+    return directions
+    }
+  
+  catch (err) {
+    console.log(err)
+  }
+  
 }
 
 // Get user geometries
 // old function definition
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
-  async function get_user_geometries(req:Request, res:Response) {
+  async function get_user_layer_metadata(req:Request, res:Response) {
 
-    console.log('$$$$$$$@')
-    // const dbQuery = 
-    //   `SELECT geometry_id::INTEGER, ST_AsGeoJSON(geom) as geom FROM geometries WHERE user_id = ${req.params.user_id}",
-    //   `
-    const { user_id } = req.params
+    let { user } = req.params
+    
+    console.log(`fetching layer_metadata for ${user} from database serverside`)
+
+
     const dbQuery = 
-      `SELECT ST_AsGeoJSON(g.geom) as geom, g.layer_id::INTEGER as layer_id, g.user_id::INTEGER as user_id, l.name as layer_name, g.geom_id as geom_id
-      FROM user_geometries g
-      LEFT JOIN user_layers l ON g.layer_id=l.layer_id
-      WHERE l.user_id = ${user_id}
-      ORDER BY g.layer_id`
-    // console.log(dbQuery)
+      `With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
+      From user_geometries g
+      LEFT JOIN user_layers l ON g.layer_id = l.layer_id
+      GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)
+      
+      
+      
+      SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
+      FROM selection s
+      LEFT JOIN users u ON s.user_id = u.id
+      WHERE username = '${user}'
+      GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count
+      ;`
+
   try {
     const dbResponse = await pool.query(dbQuery);
     console.log(dbResponse)
@@ -1867,100 +2362,160 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
   }
 };
 
-// Put user geometries
-// app.put("/api/v1/geometries/:user_id", async (req, res) => {
-
-
-async function send_to_DB(req:Request, res:Response) {
-  console.log("submit geometriess attempted serverside");
-  // console.log(req.body.featureCollection)
-  // console.log(req.body.name)
-
-  ////// INFO PROVIDED
-  // user_id
-  // current layer ID and curren layer name
-  // all points in current layer
-
-
-  const values = []
-
-  const { featureCollection, name: layerName } = req.body
+async function get_layer_geoms(req:Request, res:Response) {
   
-  featureCollection.features.forEach(x=> {
-    
-    const { properties: { id, context_info }, geometry } = x
-    console.log(id, context_info, geometry, layerName)
-
-    //// either collate to big database update push thing
-
-    //// send to DB one at a time
-    values.push({id, context_info, geometry, layerName})
-
+  function generatePoint(coords:number[], properties:any = {}) {
+    const geometry = {
+      type: 'Point',
+      coordinates: coords.slice().reverse(),
+    };
+  
+    return {
+      type: 'Feature',
+      properties,
+      geometry,
+    };
   }
   
-  )
-  // console.log(req.params.user_id)
-  // console.log(req.body)
-
-  // let features = ''
-  // const geom_id = 
-  // featureCollection.features.forEach(x=>{
-
-
-
-  //   const string_values = ((geom_id, user_id, x.geom.strinfia())
-
-  // })
-
-
-  // try {
-  //     const deleteResults = db.query(
-  //       `INSERT INTO geometries (geom_id, user_id, geom) values ${string_values}`, 
-  //       [user_id]
-  //     );
+  // Generate a geojson from an array
+  function generateGeojson(geometryArray:number[][], propertiesArray:any[]) {
+    const collection = {
+      type: 'FeatureCollection',
+      features: [],
+    };
+  
+    for (let i = 0; i < geometryArray.length; i += 1) {
+      const geometry = geometryArray[i];
+      const properties = propertiesArray[i] ? propertiesArray[i] : {};
+  
+      if (typeof geometry[0] === 'number' && typeof geometry[1] === 'number' && geometry.length === 2) {
+        collection.features.push(generatePoint(geometry, properties));
+      }
+    }
+  
+    return collection;
+  }
 
 
+  console.log('fetching geometries from database serverside.')
+  const { user, layer_id } = req.params
+  console.log(user, layer_id)
+
+  const dbQuery = 
+    `
+    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id
+    FROM user_geometries g
+    LEFT JOIN user_layers l ON g.layer_id=l.layer_id
+	  INNER JOIN users u ON g.user_id = u.id
+    WHERE u.username = '${user}' AND g.layer_id = ${layer_id}
+    ORDER BY g.layer_id`
 
 
+
+  const geomBin = []
+  const propertyBin = []
+  try {
+  const dbResponse = await pool.query(dbQuery);
+  console.log(dbResponse)
+  dbResponse.rows.forEach(row => {
+    const {geom, layer_id, layer_name, geom_id} = row
+    const [lat, lng] = JSON.parse(geom).coordinates
+    geomBin.push([lat, lng])
+    propertyBin.push({geom_id})
+  });
+  const geoJSON = generateGeojson(geomBin, propertyBin)
+  console.log(geoJSON)
   res.status(200).json({
-        status: "success",
-        results: "hi",
-      });
-} 
-  // const { user_id } = req.params;
-  // const { geometries } = req.body;
+    status: "success",
+    results: geoJSON,
+  });
+  } catch (err) {
+  console.log(err);
+}
+};
 
-  // let temp = [];
-  // geometries.forEach((geom) => {
-  //   const { geometry_id, geometry } = geom;
+
+async function send_geoms(req:Request, res:Response) {
+  // console.log('send geoms received serverside')
+  // const { featureCollection, token } = req.body
+
+  // console.log(featureCollection)
+  // console.log(token)
+
+  // const [username, _] = token.split(':')
+
+  // let values = []
+  // const layername = featureCollection.features[0].properties['layername']
+  // featureCollection.features.forEach(f => {
+
+  //   const { geometry } = f
+
+  //   if (layername === f.properties['layername']) {
+  //     console.log("that's  great")
+  //   }
+  //   else {
+  //     return res.status(400).json({
+  //       status: 'failure',
+  //       message: 'Invalid input',
+  //       function: 'send_geoms',
+  //     } as ApiResponse);
+  //   }
+
+
   //   /// formatting away double quotes. PSQL seems to only accept single quotes around the geojson
-  //   const formattedGeometry = "'" + geometry + "'";
-  //   temp.push(
-  //     `(${geometry_id}, ${user_id}, ST_GeomFromGeoJSON(${formattedGeometry}))`
+    
+
+  //   values.push(
+  //     `(${layername}, ${user_id} , ST_GeomFromGeoJSON('${geometry}'))`
   //   );
-  // });
-  // const updated_geometries = temp.join(",");
+  // })
+    
 
-  // try {
-  //   const deleteResults = db.query(
-  //     "DELETE FROM geometries WHERE user_id = $1", 
-  //     [user_id]
-  //   );
+    //// username cannot make multiple layers with the same name
 
-  //   const update_geoms =
-  //     "INSERT INTO geometries (geometry_id, user_id, geom) VALUES " + updated_geometries;
-  //   console.log(text);
 
-  //   const results = await db.query(update_geoms);
+    // const dbQuery = `with s as (
+    //   select layer_id, layername
+    //   from LAYER_TABLE
+    //   where name = ${layername}
+    //   ), i as (
+    //   insert into LAYER_TABLE (name)
+    //   select ${layername}
+    //   where not exists (select ${layername} from s)
+    //   returning layer_id
+    //   )
+    //   select layer_id from i
+    //   union all
+    //   select layer_id from s;`
 
-  //   res.status(200).json({
-  //     status: "success",
-  //     results: results.rows[0],
-  //   });
-  // } catch (err) {
-  //   console.log(err);
-  // }
-// };
+    //   "INSERT INTO geometries (, user_id, geom) VALUES " + values;
+     
+  //     try {
+        
+  //       const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: dbResponse.rows[0].length,
+  //       function: 'admin_level_1',
+  //     } as ApiResponse);
+  //   }
+          
+
+
+  //       }
+  //      catch (err) {
+  //       console.log(err);
+  //     }
+  
+
+  // return res.status(200).json({
+  //   status: 'success',
+  //   message: 'hello world',
+  //   function: 'send_geoms',
+  // } );
+
+}
 
 
 
@@ -1989,6 +2544,7 @@ router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
 router.route('/demography').get(auth, demography);
 router.route('/population_density_buffer').get(auth, population_density_buffer);
+router.route('/population_buffer').get(auth, population_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);
 router.route('/admin_level_1').get(auth, admin_level_1);
@@ -2003,15 +2559,25 @@ router.route('/get_banks').get(auth, get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);
 router.route('/a_to_b_time_distance_car').get(auth, a_to_b_time_distance_car);
+router.route('/network_coverage').get(auth, network_coverage);
+router.route('/oci_coverage').get(auth, oci_coverage);
+router.route('/mce_coverage').get(auth, mce_coverage);
+router.route('/get_forecast').get(auth, get_forecast);
+router.route('/get_api_isochrone').get(auth, get_api_isochrone);
+router.route('/get_api_directions').get(auth, get_api_directions);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
+router.route('/send_geoms').post(send_geoms)
+router.route('/get_user_layer_metadata/:user').get(get_user_layer_metadata)
+router.route('/get_layer_geoms/:user/:layer_id').get(get_layer_geoms)
 
-router.route('/send_to_DB/:user_id').post(send_to_DB);
-router.route('/get_user_geometries/:user_id').get(get_user_geometries);
+
+// router.route('/send_to_DB/:user_id').post(send_to_DB);
+// router.route('/get_user_geometries/:user_id').get(get_user_geometries);
 
  
 
