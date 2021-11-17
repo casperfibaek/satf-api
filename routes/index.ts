@@ -458,7 +458,7 @@ async function urban_status_simple(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
-
+/// Not in use at the moment
 async function population_density_buffer(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.buffer) {
     return res.status(400).json({
@@ -533,32 +533,46 @@ async function population_buffer(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    WITH buf AS (
-      SELECT ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${req.query.buffer}'
-      )::geometry As geom
-    ),
-    query AS(
-      SELECT 
-        SUM((ST_SummaryStats(ST_Clip(a.rast, geom), 1)).sum)::int AS daytime,
-        SUM((ST_SummaryStats(ST_Clip(b.rast, geom), 1)).sum)::int AS nighttime,
-        SUM((ST_SummaryStats(ST_Clip(c.rast, geom), 1)).sum)::int AS unweighted
-      FROM buf p
-      LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(p.geom, a.rast))
-      LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(p.geom, b.rast))
-      LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(p.geom, c.rast))
-    )
-    SELECT json_agg(json_build_array('daytime:', daytime, 'nighttime:', nighttime, 'unweighted:', unweighted))
-    as population_buf
-    FROM query;
+    WITH const (pp_geom) AS (
+            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${Number(req.query.buffer) + 50}')::geometry)
+        )
+
+    SELECT CASE 
+      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN --- ghana bbox
+        ( With gh_query AS(
+          SELECT 
+            SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime,
+            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime,
+            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted
+
+          FROM const
+          LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(const.pp_geom, a.rast))
+          LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(const.pp_geom, b.rast))
+          LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(const.pp_geom, c.rast)))
+
+          SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))
+          FROM gh_query)
+      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN --- TZA bbox
+        (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(
+          tza_ppp_2020.rast, 
+          const.pp_geom
+        ))).sum::int) as tza_pop
+        FROM
+          tza_ppp_2020, const
+        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
+        SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))
+        FROM tza_query)
+    END as pop_buf
+  ;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse.rows[0]);
+    
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: dbResponse.rows[0].population_buf,
+        message: dbResponse.rows[0].pop_buf,
         function: 'population_buffer',
       } as ApiResponse);
     }
@@ -619,11 +633,9 @@ async function population_density_walk(req:Request, res:Response) {
     END
       as pop_dense_walk
   `;
-  console.log(dbQuery);
+
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse);
-    console.log(dbResponse.rows[0]);
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -690,7 +702,7 @@ async function population_density_bike(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse.rows[0]);
+ 
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -814,7 +826,7 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
 
   const profile = "walking"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-  console.log(response)
+ 
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
@@ -866,7 +878,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
 
   const profile = "cycling"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-  console.log(response)
+
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
@@ -940,10 +952,10 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
   `;
-    console.log(dbQuery)
+   
   try {
     const dbResponse = await pool.query(dbQuery);
-    
+     console.log(dbQuery)
 
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
@@ -1201,7 +1213,6 @@ async function get_banks(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
-
     const returnArray = [];
     for (let i = 0; i < dbResponse.rows.length; i += 1) {
       returnArray.push({
@@ -2250,7 +2261,7 @@ async function get_api_isochrone(req, res) {
 
   const isochrone = await _get_isochrone(profile, lng, lat, minutes)
 
-  console.log(isochrone)
+  // console.log(isochrone)
 
 
 
@@ -2286,7 +2297,7 @@ async function _get_isochrone(profile, lng, lat, minutes) {
     
     const isochrone = data.features[0].geometry;
 
-    console.log(isochrone);
+    // console.log(isochrone);
     
     return isochrone
     }
@@ -2578,7 +2589,7 @@ router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
 router.route('/demography').get(auth, demography);
-router.route('/population_density_buffer').get(auth, population_density_buffer);
+// router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/population_buffer').get(auth, population_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);

@@ -524,6 +524,7 @@ function urban_status_simple(req, res) {
         });
     });
 }
+/// Not in use at the moment
 function population_density_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_7;
@@ -596,18 +597,17 @@ function population_buffer(req, res) {
                                 "function": 'population_buffer'
                             })];
                     }
-                    dbQuery = "\n    WITH buf AS (\n      SELECT ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + req.query.buffer + "'\n      )::geometry As geom\n    ),\n    query AS(\n      SELECT \n        SUM((ST_SummaryStats(ST_Clip(a.rast, geom), 1)).sum)::int AS daytime,\n        SUM((ST_SummaryStats(ST_Clip(b.rast, geom), 1)).sum)::int AS nighttime,\n        SUM((ST_SummaryStats(ST_Clip(c.rast, geom), 1)).sum)::int AS unweighted\n      FROM buf p\n      LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(p.geom, a.rast))\n      LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(p.geom, b.rast))\n      LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(p.geom, c.rast))\n    )\n    SELECT json_agg(json_build_array('daytime:', daytime, 'nighttime:', nighttime, 'unweighted:', unweighted))\n    as population_buf\n    FROM query;\n  ";
+                    dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + (Number(req.query.buffer) + 50) + "')::geometry)\n        )\n\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN --- ghana bbox\n        ( With gh_query AS(\n          SELECT \n            SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime,\n            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime,\n            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted\n\n          FROM const\n          LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(const.pp_geom, a.rast))\n          LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(const.pp_geom, b.rast))\n          LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(const.pp_geom, c.rast)))\n\n          SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))\n          FROM gh_query)\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN --- TZA bbox\n        (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int) as tza_pop\n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n        SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))\n        FROM tza_query)\n    END as pop_buf\n  ;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
-                    console.log(dbResponse.rows[0]);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].population_buf,
+                                message: dbResponse.rows[0].pop_buf,
                                 "function": 'population_buffer'
                             })];
                     }
@@ -650,15 +650,12 @@ function population_density_walk(req, res) {
                             })];
                     }
                     dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 55) + 50) + "')::geometry)\n        )\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n        ghana_pop_unweighted.rast, \n        const.pp_geom\n        ))).sum::int) \n        FROM\n          ghana_pop_unweighted, const\n        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int)\n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n    END\n      as pop_dense_walk\n  ";
-                    console.log(dbQuery);
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
-                    console.log(dbResponse);
-                    console.log(dbResponse.rows[0]);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
@@ -711,7 +708,6 @@ function population_density_bike(req, res) {
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
-                    console.log(dbResponse.rows[0]);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
@@ -814,7 +810,6 @@ function pop_density_isochrone_walk(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    console.log(response);
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_walk;\n  ";
                     _a.label = 2;
@@ -873,7 +868,6 @@ function pop_density_isochrone_bike(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    console.log(response);
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_bike;\n  ";
                     _a.label = 2;
@@ -948,13 +942,13 @@ function pop_density_isochrone_car(req, res) {
                     response = _a.sent();
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
-                    console.log(dbQuery);
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 3:
                     dbResponse = _a.sent();
+                    console.log(dbQuery);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
@@ -2360,10 +2354,12 @@ function get_api_isochrone(req, res) {
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, _get_isochrone(profile, lng, lat, minutes)];
+                    return [4 /*yield*/, _get_isochrone(profile, lng, lat, minutes)
+                        // console.log(isochrone)
+                    ];
                 case 2:
                     isochrone = _b.sent();
-                    console.log(isochrone);
+                    // console.log(isochrone)
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
                             message: isochrone,
@@ -2400,7 +2396,7 @@ function _get_isochrone(profile, lng, lat, minutes) {
                 case 3:
                     data = _a.sent();
                     isochrone = data.features[0].geometry;
-                    console.log(isochrone);
+                    // console.log(isochrone);
                     return [2 /*return*/, isochrone];
                 case 4:
                     err_41 = _a.sent();
@@ -2615,7 +2611,7 @@ router.route('/isochrone_bike').get(auth_1["default"], isochrone_bike);
 router.route('/isochrone_car').get(auth_1["default"], isochrone_car);
 router.route('/nightlights').get(auth_1["default"], nightlights);
 router.route('/demography').get(auth_1["default"], demography);
-router.route('/population_density_buffer').get(auth_1["default"], population_density_buffer);
+// router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/population_buffer').get(auth_1["default"], population_buffer);
 router.route('/urban_status').get(auth_1["default"], urban_status);
 router.route('/urban_status_simple').get(auth_1["default"], urban_status_simple);
