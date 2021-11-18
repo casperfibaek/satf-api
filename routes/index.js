@@ -579,7 +579,7 @@ function population_density_buffer(req, res) {
 }
 function population_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_8;
+        var dbQuery, dbResponse, resp_arr, apiResponseArr, err_8;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -604,11 +604,16 @@ function population_buffer(req, res) {
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
-                    console.log(dbResponse.rows[0]);
+                    resp_arr = dbResponse.rows[0].pop_buf[0];
+                    apiResponseArr = resp_arr.reduce(function (result, value, index, array) {
+                        if (index % 2 === 0)
+                            result.push(array.slice(index, index + 2));
+                        return result;
+                    }, []);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].pop_buf,
+                                message: apiResponseArr,
                                 "function": 'population_buffer'
                             })];
                     }
@@ -651,15 +656,12 @@ function population_density_walk(req, res) {
                             })];
                     }
                     dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 55) + 50) + "')::geometry)\n        )\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n        ghana_pop_unweighted.rast, \n        const.pp_geom\n        ))).sum::int) \n        FROM\n          ghana_pop_unweighted, const\n        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int)\n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n    END\n      as pop_dense_walk\n  ";
-                    console.log(dbQuery);
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
-                    console.log(dbResponse);
-                    console.log(dbResponse.rows[0]);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
@@ -712,7 +714,6 @@ function population_density_bike(req, res) {
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
-                    console.log(dbResponse.rows[0]);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
@@ -815,7 +816,6 @@ function pop_density_isochrone_walk(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    console.log(response);
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_walk;\n  ";
                     _a.label = 2;
@@ -874,7 +874,6 @@ function pop_density_isochrone_bike(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    console.log(response);
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_bike;\n  ";
                     _a.label = 2;
@@ -949,13 +948,13 @@ function pop_density_isochrone_car(req, res) {
                     response = _a.sent();
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
-                    console.log(dbQuery);
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 3:
                     dbResponse = _a.sent();
+                    console.log(dbQuery);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
@@ -2361,10 +2360,12 @@ function get_api_isochrone(req, res) {
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, _get_isochrone(profile, lng, lat, minutes)];
+                    return [4 /*yield*/, _get_isochrone(profile, lng, lat, minutes)
+                        // console.log(isochrone)
+                    ];
                 case 2:
                     isochrone = _b.sent();
-                    console.log(isochrone);
+                    // console.log(isochrone)
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
                             message: isochrone,
@@ -2401,7 +2402,7 @@ function _get_isochrone(profile, lng, lat, minutes) {
                 case 3:
                     data = _a.sent();
                     isochrone = data.features[0].geometry;
-                    console.log(isochrone);
+                    // console.log(isochrone);
                     return [2 /*return*/, isochrone];
                 case 4:
                     err_41 = _a.sent();

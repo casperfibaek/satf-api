@@ -568,12 +568,20 @@ async function population_buffer(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse.rows[0]);
+    const resp_arr = dbResponse.rows[0].pop_buf[0]
     
+
+   const apiResponseArr = resp_arr.reduce(function(result, value, index, array) {
+    if (index % 2 === 0)
+      result.push(array.slice(index, index + 2));
+    return result;
+  }, []);
+
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: dbResponse.rows[0].pop_buf,
+        message: apiResponseArr,
         function: 'population_buffer',
       } as ApiResponse);
     }
@@ -634,11 +642,9 @@ async function population_density_walk(req:Request, res:Response) {
     END
       as pop_dense_walk
   `;
-  console.log(dbQuery);
+
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse);
-    console.log(dbResponse.rows[0]);
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -705,7 +711,7 @@ async function population_density_bike(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse.rows[0]);
+ 
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -829,7 +835,7 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
 
   const profile = "walking"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-  console.log(response)
+ 
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
@@ -881,7 +887,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
 
   const profile = "cycling"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-  console.log(response)
+
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
@@ -955,10 +961,10 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
   `;
-    console.log(dbQuery)
+   
   try {
     const dbResponse = await pool.query(dbQuery);
-    
+     console.log(dbQuery)
 
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
@@ -2264,7 +2270,7 @@ async function get_api_isochrone(req, res) {
 
   const isochrone = await _get_isochrone(profile, lng, lat, minutes)
 
-  console.log(isochrone)
+  // console.log(isochrone)
 
 
 
@@ -2300,7 +2306,7 @@ async function _get_isochrone(profile, lng, lat, minutes) {
     
     const isochrone = data.features[0].geometry;
 
-    console.log(isochrone);
+    // console.log(isochrone);
     
     return isochrone
     }
