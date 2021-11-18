@@ -225,7 +225,7 @@ function admin_level_1(req, res) {
                                 "function": 'admin_level_1'
                             })];
                     }
-                    dbQuery = "\n        SELECT \"adm1_name\" AS adm1\n        FROM public.ghana_admin\n        WHERE\n            ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n        LIMIT 1;\n    ";
+                    dbQuery = "\n        SELECT \"adm1_name\" AS adm1\n        FROM public.gh_tza_admin\n        WHERE\n            ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n        LIMIT 1;\n    ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -277,7 +277,7 @@ function admin_level_2(req, res) {
                                 "function": 'admin_level_2'
                             })];
                     }
-                    dbQuery = "\n    SELECT \"adm2_name\" AS adm2\n    FROM public.ghana_admin\n    WHERE\n        ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT \"adm2_name\" AS adm2\n    FROM public.gh_tza_admin\n    WHERE\n        ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -343,7 +343,7 @@ function admin_level_2_fuzzy_tri(req, res) {
                                 "function": 'admin_level_2_fuzzy_tri'
                             })];
                     }
-                    dbQuery = "\n    SELECT adm2_name as name\n    FROM ghana_admin\n    ORDER BY SIMILARITY(adm2_name, '" + req.query.name + "') DESC\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY SIMILARITY(adm2_name, '" + req.query.name + "') DESC\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -388,7 +388,7 @@ function admin_level_2_fuzzy_lev(req, res) {
                                 "function": 'admin_level_2_fuzzy_lev'
                             })];
                     }
-                    dbQuery = "\n    SELECT adm2_name as name\n    FROM ghana_admin\n    ORDER BY LEVENSHTEIN(adm2_name, '" + req.query.name + "') ASC\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY LEVENSHTEIN(adm2_name, '" + req.query.name + "') ASC\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -524,6 +524,7 @@ function urban_status_simple(req, res) {
         });
     });
 }
+/// Not in use at the moment
 function population_density_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_7;
@@ -578,7 +579,7 @@ function population_density_buffer(req, res) {
 }
 function population_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_8;
+        var dbQuery, dbResponse, apiResponseArr, err_8;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -596,17 +597,22 @@ function population_buffer(req, res) {
                                 "function": 'population_buffer'
                             })];
                     }
-                    dbQuery = "\n    WITH buf AS (\n      SELECT ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + req.query.buffer + "'\n      )::geometry As geom\n    ),\n    query AS(\n      SELECT \n        SUM((ST_SummaryStats(ST_Clip(a.rast, geom), 1)).sum)::int AS daytime,\n        SUM((ST_SummaryStats(ST_Clip(b.rast, geom), 1)).sum)::int AS nighttime,\n        SUM((ST_SummaryStats(ST_Clip(c.rast, geom), 1)).sum)::int AS unweighted\n      FROM buf p\n      LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(p.geom, a.rast))\n      LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(p.geom, b.rast))\n      LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(p.geom, c.rast))\n    )\n    SELECT json_agg(json_build_array('daytime:', daytime, 'nighttime:', nighttime, 'unweighted:', unweighted))\n    as population_buf\n    FROM query;\n  ";
+                    dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + (Number(req.query.buffer) + 50) + "')::geometry)\n        )\n\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN --- ghana bbox\n        ( With gh_query AS(\n          SELECT \n            SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime,\n            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime,\n            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted\n\n          FROM const\n          LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(const.pp_geom, a.rast))\n          LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(const.pp_geom, b.rast))\n          LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(const.pp_geom, c.rast)))\n\n          SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))\n          FROM gh_query)\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN --- TZA bbox\n        (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int) as tza_pop\n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n        SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))\n        FROM tza_query)\n    END as pop_buf\n  ;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
+                    apiResponseArr = resp_arr.reduce(function (result, value, index, array) {
+                        if (index % 2 === 0)
+                            result.push(array.slice(index, index + 2));
+                        return result;
+                    }, []);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].population_buf,
+                                message: apiResponseArr,
                                 "function": 'population_buffer'
                             })];
                     }
@@ -648,7 +654,7 @@ function population_density_walk(req, res) {
                                 "function": 'population_density_walk'
                             })];
                     }
-                    dbQuery = "\n    WITH const (pp_geom) AS (\n        values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 55) + 50) + "')::geometry)\n    )\n    \n    SELECT\n        SUM((ST_SummaryStats(ST_Clip(\n            ppp_avg.rast, \n            const.pp_geom\n        ))).sum::int) as pop_dense_walk\n    FROM\n      ppp_avg, const\n    WHERE ST_Intersects(const.pp_geom, ppp_avg.rast);\n  ";
+                    dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 55) + 50) + "')::geometry)\n        )\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n        ghana_pop_unweighted.rast, \n        const.pp_geom\n        ))).sum::int) \n        FROM\n          ghana_pop_unweighted, const\n        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int)\n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n    END\n      as pop_dense_walk\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -700,7 +706,7 @@ function population_density_bike(req, res) {
                                 "function": 'population_density_bike'
                             })];
                     }
-                    dbQuery = "\n    WITH const (pp_geom) AS (\n        values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 155) + 50) + "')::geometry)\n    )\n    \n    SELECT\n        SUM((ST_SummaryStats(ST_Clip(\n            ppp_avg.rast, \n            const.pp_geom\n        ))).sum::int) as pop_dense_bike\n    FROM\n      ppp_avg, const\n    WHERE ST_Intersects(const.pp_geom, ppp_avg.rast);\n  ";
+                    dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 155) + 50) + "')::geometry)\n        )\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n        ghana_pop_unweighted.rast, \n        const.pp_geom\n        ))).sum::int)\n        FROM\n          ghana_pop_unweighted, const\n        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int) \n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n    END\n      as pop_dense_bike\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -752,7 +758,7 @@ function population_density_car(req, res) {
                                 "function": 'population_density_car'
                             })];
                     }
-                    dbQuery = "\n    WITH const (pp_geom) AS (\n        values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 444) + 50) + "')::geometry)\n    )\n    \n    SELECT\n        SUM((ST_SummaryStats(ST_Clip(\n            ppp_avg.rast, \n            const.pp_geom\n        ))).sum::int) as pop_dense_car\n    FROM\n      ppp_avg, const\n    WHERE ST_Intersects(const.pp_geom, ppp_avg.rast);\n  ";
+                    dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + ((Number(req.query.minutes) * 444) + 50) + "')::geometry)\n        )\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n        ghana_pop_unweighted.rast, \n        const.pp_geom\n        ))).sum::int)\n        FROM\n          ghana_pop_unweighted, const\n        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN\n        (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int) \n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n    END\n      as pop_dense_car\n;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -787,7 +793,7 @@ function population_density_car(req, res) {
 // New Function - population density in walking distance
 function pop_density_isochrone_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_12;
+        var profile, response, isochrone, dbQuery, dbResponse, err_12;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -805,17 +811,22 @@ function pop_density_isochrone_walk(req, res) {
                                 "function": 'pop_density_isochrone_walk'
                             })];
                     }
-                    dbQuery = "\n    SELECT popDensWalk('" + req.query.lng + "', '" + req.query.lat + "', '" + req.query.minutes + "') as pop_dense_iso_walk;\n  ";
-                    _a.label = 1;
+                    profile = "walking";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    isochrone = JSON.stringify(response);
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_walk;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+                                message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_walk'])),
                                 "function": 'pop_density_isochrone_walk'
                             })];
                     }
@@ -824,7 +835,7 @@ function pop_density_isochrone_walk(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_walk'
                         })];
-                case 3:
+                case 4:
                     err_12 = _a.sent();
                     console.log(err_12);
                     return [2 /*return*/, res.status(500).json({
@@ -832,7 +843,7 @@ function pop_density_isochrone_walk(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_walk'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
@@ -840,7 +851,7 @@ function pop_density_isochrone_walk(req, res) {
 // New Function - population density in biking distance
 function pop_density_isochrone_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_13;
+        var profile, response, isochrone, dbQuery, dbResponse, err_13;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -858,26 +869,45 @@ function pop_density_isochrone_bike(req, res) {
                                 "function": 'pop_density_isochrone_bike'
                             })];
                     }
-                    dbQuery = "\n    SELECT popDensBike('" + req.query.lng + "', '" + req.query.lat + "', '" + req.query.minutes + "') as pop_dense_iso_bike;\n  ";
-                    _a.label = 1;
+                    profile = "cycling";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    isochrone = JSON.stringify(response);
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_bike;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+                                message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_bike'])),
                                 "function": 'pop_density_isochrone_bike'
                             })];
                     }
+                    // Inactive due to new Db not supporting pgrouting
+                    // // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+                    // const dbQuery = `
+                    //   SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+                    // `;
+                    // try {
+                    //   const dbResponse = await pool.query(dbQuery);
+                    //   if (dbResponse.rowCount > 0) {
+                    //     return res.status(200).json({
+                    //       status: 'success',
+                    //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+                    //       function: 'pop_density_isochrone_bike',
+                    //     } as ApiResponse);
+                    //   }
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_bike'
                         })];
-                case 3:
+                case 4:
                     err_13 = _a.sent();
                     console.log(err_13);
                     return [2 /*return*/, res.status(500).json({
@@ -885,12 +915,12 @@ function pop_density_isochrone_bike(req, res) {
                             message: 'Error encountered on server',
                             "function": 'pop_density_isochrone_bike'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
 }
-// New Function - population density in driving distance - using api grasshopper
+// New Function - population density in driving distance - using api mapbox
 function pop_density_isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var profile, response, isochrone, dbQuery, dbResponse, err_14;
@@ -915,16 +945,15 @@ function pop_density_isochrone_car(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    console.log(response);
                     isochrone = JSON.stringify(response);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
-                    console.log(dbQuery);
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 3:
                     dbResponse = _a.sent();
+                    console.log(dbQuery);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
@@ -1941,7 +1970,7 @@ function delete_user(req, res) {
 // Getting time and distance from A to B
 function a_to_b_time_distance_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_33;
+        var profile, directions, err_33;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1959,25 +1988,17 @@ function a_to_b_time_distance_walk(req, res) {
                                 "function": 'a_to_b_time_distance_walk'
                             })];
                     }
-                    dbQuery = "\n    SELECT pgr_timeDist_walk('" + req.query.lng1 + "', '" + req.query.lat1 + "', '" + req.query.lng2 + "', '" + req.query.lat2 + "');\n  ";
+                    profile = "walking";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
-                        return [2 /*return*/, res.status(200).json({
-                                status: 'success',
-                                message: { time: rep[0], distance: rep[1] },
-                                "function": 'a_to_b_time_distance_walk'
-                            })];
-                    }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_walk'
+                    directions = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            "function": "a_to_b_time_distance_walk"
                         })];
                 case 3:
                     err_33 = _a.sent();
@@ -1995,7 +2016,7 @@ function a_to_b_time_distance_walk(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_34;
+        var profile, directions, err_34;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2013,25 +2034,17 @@ function a_to_b_time_distance_bike(req, res) {
                                 "function": 'a_to_b_time_distance_bike'
                             })];
                     }
-                    dbQuery = "\n    SELECT pgr_timeDist_bike('" + req.query.lng1 + "', '" + req.query.lat1 + "', '" + req.query.lng2 + "', '" + req.query.lat2 + "');\n  ";
+                    profile = "cycling";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
-                        return [2 /*return*/, res.status(200).json({
-                                status: 'success',
-                                message: { time: rep[0], distance: rep[1] },
-                                "function": 'a_to_b_time_distance_bike'
-                            })];
-                    }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_bike'
+                    directions = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            "function": "a_to_b_time_distance_bike"
                         })];
                 case 3:
                     err_34 = _a.sent();
@@ -2046,10 +2059,10 @@ function a_to_b_time_distance_bike(req, res) {
         });
     });
 }
-// A to B Biking function
+// A to B driving function
 function a_to_b_time_distance_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, rep, err_35;
+        var profile, directions, err_35;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2067,33 +2080,25 @@ function a_to_b_time_distance_car(req, res) {
                                 "function": 'a_to_b_time_distance_car'
                             })];
                     }
-                    dbQuery = "\n    SELECT pgr_timeDist_car('" + req.query.lng1 + "', '" + req.query.lat1 + "', '" + req.query.lng2 + "', '" + req.query.lat2 + "');\n  ";
+                    profile = "driving";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
-                        rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
-                        return [2 /*return*/, res.status(200).json({
-                                status: 'success',
-                                message: { time: rep[0], distance: rep[1] },
-                                "function": 'a_to_b_time_distance_car'
-                            })];
-                    }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_car'
+                    directions = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            "function": "a_to_b_time_distance_car"
                         })];
                 case 3:
                     err_35 = _a.sent();
                     console.log(err_35);
                     return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating time and distance',
-                            "function": 'a_to_b_time_distance_car'
+                            status: "failure",
+                            message: "Error encountered on server",
+                            "function": "a_to_b_time_distance_car"
                         })];
                 case 4: return [2 /*return*/];
             }
@@ -2303,7 +2308,7 @@ function get_forecast(req, res) {
                         return {
                             date: format_time_1(dt),
                             description: weather[0].description,
-                            icon: weather[0].icon,
+                            // icon: weather[0].icon,
                             temp_min: temp.min,
                             temp_max: temp.max,
                             humidity: humidity,
@@ -2354,10 +2359,12 @@ function get_api_isochrone(req, res) {
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, _get_isochrone(profile, lng, lat, minutes)];
+                    return [4 /*yield*/, _get_isochrone(profile, lng, lat, minutes)
+                        // console.log(isochrone)
+                    ];
                 case 2:
                     isochrone = _b.sent();
-                    console.log(isochrone);
+                    // console.log(isochrone)
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
                             message: isochrone,
@@ -2376,7 +2383,7 @@ function get_api_isochrone(req, res) {
         });
     });
 }
-// grasshopper internal isochrone function
+// mmapbox internal isochrone function
 function _get_isochrone(profile, lng, lat, minutes) {
     return __awaiter(this, void 0, void 0, function () {
         var key, response, data, isochrone, err_41;
@@ -2394,11 +2401,83 @@ function _get_isochrone(profile, lng, lat, minutes) {
                 case 3:
                     data = _a.sent();
                     isochrone = data.features[0].geometry;
-                    console.log(isochrone);
+                    // console.log(isochrone);
                     return [2 /*return*/, isochrone];
                 case 4:
                     err_41 = _a.sent();
                     console.log(err_41);
+                    return [3 /*break*/, 5];
+                case 5: return [2 /*return*/];
+            }
+        });
+    });
+}
+function get_api_directions(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, profile, lng1, lat1, lng2, lat2, directions, err_42;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "get_directions"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat1) || !(0, validators_1.isValidLatitude)(req.query.lng1) || !(0, validators_1.isValidLatitude)(req.query.lat2) || !(0, validators_1.isValidLatitude)(req.query.lng2)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "get_directions"
+                            })];
+                    }
+                    _a = req.query, profile = _a.profile, lng1 = _a.lng1, lat1 = _a.lat1, lng2 = _a.lng2, lat2 = _a.lat2;
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, _get_directions(profile, lng1, lat1, lng2, lat2)];
+                case 2:
+                    directions = _b.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: { time: directions.duration / 60, distance: directions.distance / 1000 },
+                            "function": "get_directions"
+                        })];
+                case 3:
+                    err_42 = _b.sent();
+                    console.log(err_42);
+                    return [2 /*return*/, res.status(500).json({
+                            status: "failure",
+                            message: "Error encountered on server",
+                            "function": "get_directions"
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+function _get_directions(profile, lng1, lat1, lng2, lat2) {
+    return __awaiter(this, void 0, void 0, function () {
+        var key, response, data, directions, err_43;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3Z2ZXJidXUwM3FsMm9vZTUyMjZheTdrIn0._fsu4H3LZcTpKBxkRaQR_g";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 4, , 5]);
+                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/directions/v5/mapbox/" + profile + "/" + lng1 + "," + lat1 + ";" + lng2 + "," + lat2 + "?access_token=" + key)];
+                case 2:
+                    response = _a.sent();
+                    return [4 /*yield*/, response.data];
+                case 3:
+                    data = _a.sent();
+                    directions = data.routes[0];
+                    return [2 /*return*/, directions];
+                case 4:
+                    err_43 = _a.sent();
+                    console.log(err_43);
                     return [3 /*break*/, 5];
                 case 5: return [2 /*return*/];
             }
@@ -2410,7 +2489,7 @@ function _get_isochrone(profile, lng, lat, minutes) {
 // app.get("/api/v1/geometries/:user_id", async (req, res) => {
 function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user, dbQuery, dbResponse, err_42;
+        var user, dbQuery, dbResponse, err_44;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2430,8 +2509,8 @@ function get_user_layer_metadata(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_42 = _a.sent();
-                    console.log(err_42);
+                    err_44 = _a.sent();
+                    console.log(err_44);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2468,7 +2547,7 @@ function get_layer_geoms(req, res) {
             }
             return collection;
         }
-        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_43;
+        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2499,8 +2578,8 @@ function get_layer_geoms(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_43 = _b.sent();
-                    console.log(err_43);
+                    err_45 = _b.sent();
+                    console.log(err_45);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2537,7 +2616,7 @@ router.route('/isochrone_bike').get(auth_1["default"], isochrone_bike);
 router.route('/isochrone_car').get(auth_1["default"], isochrone_car);
 router.route('/nightlights').get(auth_1["default"], nightlights);
 router.route('/demography').get(auth_1["default"], demography);
-router.route('/population_density_buffer').get(auth_1["default"], population_density_buffer);
+// router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/population_buffer').get(auth_1["default"], population_buffer);
 router.route('/urban_status').get(auth_1["default"], urban_status);
 router.route('/urban_status_simple').get(auth_1["default"], urban_status_simple);
@@ -2558,6 +2637,7 @@ router.route('/oci_coverage').get(auth_1["default"], oci_coverage);
 router.route('/mce_coverage').get(auth_1["default"], mce_coverage);
 router.route('/get_forecast').get(auth_1["default"], get_forecast);
 router.route('/get_api_isochrone').get(auth_1["default"], get_api_isochrone);
+router.route('/get_api_directions').get(auth_1["default"], get_api_directions);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);

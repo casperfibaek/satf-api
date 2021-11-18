@@ -187,9 +187,9 @@ async function admin_level_1(req:Request, res:Response) {
 
   const dbQuery = `
         SELECT "adm1_name" AS adm1
-        FROM public.ghana_admin
+        FROM public.gh_tza_admin
         WHERE
-            ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
+            ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
         LIMIT 1;
     `;
 
@@ -236,12 +236,12 @@ async function admin_level_2(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT "adm2_name" AS adm2
-    FROM public.ghana_admin
+    FROM public.gh_tza_admin
     WHERE
-        ST_Contains(public.ghana_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
+        ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(${req.query.lng}, ${req.query.lat}), 4326))
     LIMIT 1;
   `;
-
+  
   try {
     const dbResponse = await pool.query(dbQuery);
     if (dbResponse.rowCount > 0) {
@@ -296,7 +296,7 @@ async function admin_level_2_fuzzy_tri(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT adm2_name as name
-    FROM ghana_admin
+    FROM gh_tza_admin
     ORDER BY SIMILARITY(adm2_name, '${req.query.name}') DESC
     LIMIT 1;
   `;
@@ -336,7 +336,7 @@ async function admin_level_2_fuzzy_lev(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT adm2_name as name
-    FROM ghana_admin
+    FROM gh_tza_admin
     ORDER BY LEVENSHTEIN(adm2_name, '${req.query.name}') ASC
     LIMIT 1;
   `;
@@ -458,7 +458,7 @@ async function urban_status_simple(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
-
+/// Not in use at the moment
 async function population_density_buffer(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.buffer) {
     return res.status(400).json({
@@ -533,31 +533,55 @@ async function population_buffer(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    WITH buf AS (
-      SELECT ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${req.query.buffer}'
-      )::geometry As geom
-    ),
-    query AS(
-      SELECT 
-        SUM((ST_SummaryStats(ST_Clip(a.rast, geom), 1)).sum)::int AS daytime,
-        SUM((ST_SummaryStats(ST_Clip(b.rast, geom), 1)).sum)::int AS nighttime,
-        SUM((ST_SummaryStats(ST_Clip(c.rast, geom), 1)).sum)::int AS unweighted
-      FROM buf p
-      LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(p.geom, a.rast))
-      LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(p.geom, b.rast))
-      LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(p.geom, c.rast))
-    )
-    SELECT json_agg(json_build_array('daytime:', daytime, 'nighttime:', nighttime, 'unweighted:', unweighted))
-    as population_buf
-    FROM query;
+    WITH const (pp_geom) AS (
+            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${Number(req.query.buffer) + 50}')::geometry)
+        )
+
+    SELECT CASE 
+      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN --- ghana bbox
+        ( With gh_query AS(
+          SELECT 
+            SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime,
+            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime,
+            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted
+
+          FROM const
+          LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(const.pp_geom, a.rast))
+          LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(const.pp_geom, b.rast))
+          LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(const.pp_geom, c.rast)))
+
+          SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))
+          FROM gh_query)
+      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN --- TZA bbox
+        (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(
+          tza_ppp_2020.rast, 
+          const.pp_geom
+        ))).sum::int) as tza_pop
+        FROM
+          tza_ppp_2020, const
+        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
+        SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))
+        FROM tza_query)
+    END as pop_buf
+  ;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
+    const resp_arr = dbResponse.rows[0].pop_buf[0]
+    
+
+   const apiResponseArr = resp_arr.reduce(function(result, value, index, array) {
+    if (index % 2 === 0)
+      result.push(array.slice(index, index + 2));
+    return result;
+  }, []);
+
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: dbResponse.rows[0].population_buf,
+        message: apiResponseArr,
         function: 'population_buffer',
       } as ApiResponse);
     }
@@ -596,17 +620,27 @@ async function population_density_walk(req:Request, res:Response) {
 
   const dbQuery = `
     WITH const (pp_geom) AS (
-        values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 55) + 50}')::geometry)
-    )
-    
-    SELECT
-        SUM((ST_SummaryStats(ST_Clip(
-            ppp_avg.rast, 
-            const.pp_geom
-        ))).sum::int) as pop_dense_walk
-    FROM
-      ppp_avg, const
-    WHERE ST_Intersects(const.pp_geom, ppp_avg.rast);
+            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 55) + 50}')::geometry)
+        )
+    SELECT CASE 
+      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN
+        (SELECT SUM((ST_SummaryStats(ST_Clip(
+        ghana_pop_unweighted.rast, 
+        const.pp_geom
+        ))).sum::int) 
+        FROM
+          ghana_pop_unweighted, const
+        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))
+      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN
+        (SELECT SUM((ST_SummaryStats(ST_Clip(
+          tza_ppp_2020.rast, 
+          const.pp_geom
+        ))).sum::int)
+        FROM
+          tza_ppp_2020, const
+        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
+    END
+      as pop_dense_walk
   `;
 
   try {
@@ -652,21 +686,32 @@ async function population_density_bike(req:Request, res:Response) {
 
   const dbQuery = `
     WITH const (pp_geom) AS (
-        values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 155) + 50}')::geometry)
-    )
-    
-    SELECT
-        SUM((ST_SummaryStats(ST_Clip(
-            ppp_avg.rast, 
-            const.pp_geom
-        ))).sum::int) as pop_dense_bike
-    FROM
-      ppp_avg, const
-    WHERE ST_Intersects(const.pp_geom, ppp_avg.rast);
+            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 155) + 50}')::geometry)
+        )
+    SELECT CASE 
+      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN
+        (SELECT SUM((ST_SummaryStats(ST_Clip(
+        ghana_pop_unweighted.rast, 
+        const.pp_geom
+        ))).sum::int)
+        FROM
+          ghana_pop_unweighted, const
+        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))
+      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN
+        (SELECT SUM((ST_SummaryStats(ST_Clip(
+          tza_ppp_2020.rast, 
+          const.pp_geom
+        ))).sum::int) 
+        FROM
+          tza_ppp_2020, const
+        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
+    END
+      as pop_dense_bike
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
+ 
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -708,17 +753,28 @@ async function population_density_car(req:Request, res:Response) {
 
   const dbQuery = `
     WITH const (pp_geom) AS (
-        values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 444) + 50}')::geometry)
-    )
-    
-    SELECT
-        SUM((ST_SummaryStats(ST_Clip(
-            ppp_avg.rast, 
-            const.pp_geom
-        ))).sum::int) as pop_dense_car
-    FROM
-      ppp_avg, const
-    WHERE ST_Intersects(const.pp_geom, ppp_avg.rast);
+            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 444) + 50}')::geometry)
+        )
+    SELECT CASE 
+      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN
+        (SELECT SUM((ST_SummaryStats(ST_Clip(
+        ghana_pop_unweighted.rast, 
+        const.pp_geom
+        ))).sum::int)
+        FROM
+          ghana_pop_unweighted, const
+        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))
+      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN
+        (SELECT SUM((ST_SummaryStats(ST_Clip(
+          tza_ppp_2020.rast, 
+          const.pp_geom
+        ))).sum::int) 
+        FROM
+          tza_ppp_2020, const
+        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
+    END
+      as pop_dense_car
+;
   `;
 
   try {
@@ -761,18 +817,39 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
       function: 'pop_density_isochrone_walk',
     } as ApiResponse);
   }
+// Inactive due to new Db not supporting pgrouting
+  // // function collecting all values from raster ghana_pop_dens inside the isochrone of walking distance
+  // const dbQuery = `
+  //   SELECT popDensWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_walk;
+  // `;
 
-  // function collecting all values from raster ghana_pop_dens inside the isochrone of walking distance
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+  //       function: 'pop_density_isochrone_walk',
+  //     } as ApiResponse);
+  //   }
+
+  const profile = "walking"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+ 
+  const isochrone = JSON.stringify(response) 
+
   const dbQuery = `
-    SELECT popDensWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_walk;
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_walk;
   `;
-
+  
   try {
     const dbResponse = await pool.query(dbQuery);
+    
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_walk)),
+        message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_walk'])),
         function: 'pop_density_isochrone_walk',
       } as ApiResponse);
     }
@@ -808,20 +885,41 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+  const profile = "cycling"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+
+  const isochrone = JSON.stringify(response) 
+
   const dbQuery = `
-    SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_bike;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
+    
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+        message: Math.round(Number(dbResponse.rows[0]['pop_api_iso_bike'])),
         function: 'pop_density_isochrone_bike',
       } as ApiResponse);
     }
+// Inactive due to new Db not supporting pgrouting
+  // // function collecting all values from raster ghana_pop_dens inside the isochrone of biking distance
+  // const dbQuery = `
+  //   SELECT popDensBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}') as pop_dense_iso_bike;
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: Math.round(Number(dbResponse.rows[0].pop_dense_iso_bike)),
+  //       function: 'pop_density_isochrone_bike',
+  //     } as ApiResponse);
+  //   }
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
@@ -836,7 +934,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
-// New Function - population density in driving distance - using api grasshopper
+// New Function - population density in driving distance - using api mapbox
 async function pop_density_isochrone_car(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
@@ -857,16 +955,16 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   // const { lat, lng, minutes } = req.query
   const profile = "driving"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-  console.log(response)
+ 
   const isochrone = JSON.stringify(response) 
 
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
   `;
-    console.log(dbQuery)
+   
   try {
     const dbResponse = await pool.query(dbQuery);
-    
+     console.log(dbQuery)
 
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
@@ -1124,7 +1222,6 @@ async function get_banks(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
-
     const returnArray = [];
     for (let i = 0; i < dbResponse.rows.length; i += 1) {
       returnArray.push({
@@ -1796,26 +1893,36 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_walk('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
+  const profile = "walking"
+    try {
 
-  try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_walk',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_walk',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_walk",
     } as ApiResponse);
+  // function without output of minutes and distance in meters from A to B
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_walk('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     const rep = dbResponse.rows[0].pgr_timedist_walk.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_walk',
+  //     } as ApiResponse);
+  //   }
+  //   return res.status(500).json({
+  //     status: 'failure',
+  //     message: 'Error while calculating time and distance',
+  //     function: 'a_to_b_time_distance_walk',
+  //   } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1844,26 +1951,33 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_bike('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
-
+  const profile = "cycling"
+ 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_bike',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_bike',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_bike",
     } as ApiResponse);
+
+  // // function without output of minutes and distance in meters from A to B
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_bike('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   const dbResponse = await pool.query(dbQuery);
+  //   if (dbResponse.rowCount > 0) {
+  //     const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_bike',
+  //     } as ApiResponse);
+  //   }
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1874,7 +1988,7 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
   }
 }
 
-// A to B Biking function
+// A to B driving function
 async function a_to_b_time_distance_car(req:Request, res:Response) {
   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
     return res.status(400).json({
@@ -1892,32 +2006,40 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  // function without output of minutes and distance in meters from A to B
-  const dbQuery = `
-    SELECT pgr_timeDist_car('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
-  `;
-
+  const profile = "driving"
+  
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
-      const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+
+  const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+
       return res.status(200).json({
-        status: 'success',
-        message: { time: rep[0], distance: rep[1] },
-        function: 'a_to_b_time_distance_car',
-      } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_car',
+      status: "success",
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      function: "a_to_b_time_distance_car",
     } as ApiResponse);
+ 
+  // function without output of minutes and distance in meters from A to B - inactive since there's pgrouting on new database
+  // const dbQuery = `
+  //   SELECT pgr_timeDist_car('${req.query.lng1}', '${req.query.lat1}', '${req.query.lng2}', '${req.query.lat2}');
+  // `;
+
+  // try {
+  //   // const dbResponse = await pool.query(dbQuery);
+  //   // if (dbResponse.rowCount > 0) {
+  //   //   const rep = dbResponse.rows[0].pgr_timedist_bike.replace('(', '').replace(')', '').split(',');
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: { time: rep[0], distance: rep[1] },
+  //       function: 'a_to_b_time_distance_car',
+  //     } as ApiResponse);
+
   } catch (err) {
     console.log(err);
+
     return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating time and distance',
-      function: 'a_to_b_time_distance_car',
+      status: "failure",
+      message: "Error encountered on server",
+      function: "a_to_b_time_distance_car",
     } as ApiResponse);
   }
 }
@@ -2097,7 +2219,7 @@ async function get_forecast(req: Request, res: Response) {
       return {
         date: format_time(dt),
         description: weather[0].description,
-        icon: weather[0].icon,
+        // icon: weather[0].icon,
         temp_min: temp.min, 
         temp_max: temp.max,
         humidity,
@@ -2148,7 +2270,7 @@ async function get_api_isochrone(req, res) {
 
   const isochrone = await _get_isochrone(profile, lng, lat, minutes)
 
-  console.log(isochrone)
+  // console.log(isochrone)
 
 
 
@@ -2169,7 +2291,7 @@ async function get_api_isochrone(req, res) {
 
 }
 
-// grasshopper internal isochrone function
+// mmapbox internal isochrone function
 
 async function _get_isochrone(profile, lng, lat, minutes) {
 
@@ -2184,9 +2306,72 @@ async function _get_isochrone(profile, lng, lat, minutes) {
     
     const isochrone = data.features[0].geometry;
 
-    console.log(isochrone);
+    // console.log(isochrone);
     
     return isochrone
+    }
+  
+  catch (err) {
+    console.log(err)
+  }
+  
+}
+
+async function get_api_directions(req, res) {
+
+   if (!req.query.lat1 || !req.query.lng1 || !req.query.lat2 || !req.query.lng2) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat1) || !isValidLatitude(req.query.lng1) || !isValidLatitude(req.query.lat2) || !isValidLatitude(req.query.lng2)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+
+  const {profile, lng1, lat1, lng2, lat2} = req.query
+  try {
+
+
+  const directions = await _get_directions(profile, lng1, lat1, lng2, lat2)
+
+
+      return res.status(200).json({
+      status: "success",
+      message: { time: directions.duration/60, distance: directions.distance/1000 },
+      function: "get_directions",
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: "failure",
+      message: "Error encountered on server",
+      function: "get_directions",
+    } as ApiResponse);
+  }
+
+}
+
+async function _get_directions(profile, lng1, lat1, lng2, lat2) {
+
+  // }
+  var key = "pk.eyJ1IjoiYW5hLWZlcm5hbmRlcyIsImEiOiJja3Z2ZXJidXUwM3FsMm9vZTUyMjZheTdrIn0._fsu4H3LZcTpKBxkRaQR_g";
+  try {
+    // const time_min = minutes*60
+
+    const response = await axios(
+      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?access_token=" + key);
+    const data = await response.data;
+    
+    const directions = data.routes[0];
+    
+    return directions
     }
   
   catch (err) {
@@ -2415,7 +2600,7 @@ router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
 router.route('/demography').get(auth, demography);
-router.route('/population_density_buffer').get(auth, population_density_buffer);
+// router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/population_buffer').get(auth, population_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);
@@ -2436,6 +2621,7 @@ router.route('/oci_coverage').get(auth, oci_coverage);
 router.route('/mce_coverage').get(auth, mce_coverage);
 router.route('/get_forecast').get(auth, get_forecast);
 router.route('/get_api_isochrone').get(auth, get_api_isochrone);
+router.route('/get_api_directions').get(auth, get_api_directions);
 router.route('/login_user_get').get(login_user_get);
 router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
