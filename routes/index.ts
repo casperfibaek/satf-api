@@ -568,11 +568,20 @@ async function population_buffer(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
+    const resp_arr = dbResponse.rows[0].pop_buf[0]
     
+
+   const apiResponseArr = resp_arr.reduce(function(result, value, index, array) {
+    if (index % 2 === 0)
+      result.push(array.slice(index, index + 2));
+    return result;
+  }, []);
+
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: dbResponse.rows[0].pop_buf,
+        message: apiResponseArr,
         function: 'population_buffer',
       } as ApiResponse);
     }

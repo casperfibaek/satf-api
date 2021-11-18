@@ -579,7 +579,7 @@ function population_density_buffer(req, res) {
 }
 function population_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_8;
+        var dbQuery, dbResponse, apiResponseArr, err_8;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -604,10 +604,15 @@ function population_buffer(req, res) {
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
+                    apiResponseArr = resp_arr.reduce(function (result, value, index, array) {
+                        if (index % 2 === 0)
+                            result.push(array.slice(index, index + 2));
+                        return result;
+                    }, []);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].pop_buf,
+                                message: apiResponseArr,
                                 "function": 'population_buffer'
                             })];
                     }
