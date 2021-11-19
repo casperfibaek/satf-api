@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
-import { translateUrbanClasses } from './utils';
+import { translateUrbanClasses, generateGeojson } from './utils';
 import {
   isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
 } from './validators';
@@ -14,6 +14,7 @@ import Pluscodes from '../assets/pluscodes';
 import { callbackify } from 'util';
 
 import axios from "axios"
+import { timeStamp } from 'console';
 
 const os = require("os")
 
@@ -2380,13 +2381,19 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
   
 }
 
-// Get user geometries
-// old function definition
-// app.get("/api/v1/geometries/:user_id", async (req, res) => {
   async function get_user_layer_metadata(req:Request, res:Response) {
 
-    let { user } = req.params
+    if (!req.query.user) {
+      return res.status(400).json({
+        status: 'failure',
+        message: 'Request missing username',
+        function: 'get_user_layer_metadata',
+      } as ApiResponse);
+    }
+    const { user } = req.query
     
+    
+
     console.log(`fetching layer_metadata for ${user} from database serverside`)
 
 
@@ -2413,47 +2420,62 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
       results: dbResponse.rows,
     });
   } catch (err) {
-    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'get_user_layer_metadata',
+    } as ApiResponse);
   }
-};
+  }
+;
+
+async function create_new_layer(req:Request, res:Response) {
+  
+  if (!req.query.user_id || !req.query.layer_name ) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing user id or layer name',
+      function: 'create_new_layer',
+    } as ApiResponse);
+  }
+
+  const { user_id, layer_name } = req.query
+
+  const dbQuery = `INSERT INTO user_layers (user_id, name) VALUES (${user_id}, ${layer_name})`
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    return res.status(200).json({
+      status: "success",
+      message: dbResponse.rows,
+      function: "get_isochrone",
+    } as ApiResponse);
+  }
+  catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'create_new_layer',
+    } as ApiResponse);
+  }
+}
 
 async function get_layer_geoms(req:Request, res:Response) {
-  
-  function generatePoint(coords:number[], properties:any = {}) {
-    const geometry = {
-      type: 'Point',
-      coordinates: coords.slice().reverse(),
-    };
-  
-    return {
-      type: 'Feature',
-      properties,
-      geometry,
-    };
-  }
-  
-  // Generate a geojson from an array
-  function generateGeojson(geometryArray:number[][], propertiesArray:any[]) {
-    const collection = {
-      type: 'FeatureCollection',
-      features: [],
-    };
-  
-    for (let i = 0; i < geometryArray.length; i += 1) {
-      const geometry = geometryArray[i];
-      const properties = propertiesArray[i] ? propertiesArray[i] : {};
-  
-      if (typeof geometry[0] === 'number' && typeof geometry[1] === 'number' && geometry.length === 2) {
-        collection.features.push(generatePoint(geometry, properties));
-      }
-    }
-  
-    return collection;
-  }
 
 
   console.log('fetching geometries from database serverside.')
-  const { user, layer_id } = req.params
+
+  if (!req.query.user || !req.query.layer_id) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing username',
+      function: 'get_user_layer_metadata',
+    } as ApiResponse);
+  }
+  
+
+  const { user, layer_id } = req.query
   console.log(user, layer_id)
 
   const dbQuery = 
@@ -2474,8 +2496,7 @@ async function get_layer_geoms(req:Request, res:Response) {
   console.log(dbResponse)
   dbResponse.rows.forEach(row => {
     const {geom, layer_id, layer_name, geom_id} = row
-    const [lat, lng] = JSON.parse(geom).coordinates
-    geomBin.push([lat, lng])
+    geomBin.push(JSON.parse(geom).coordinates)
     propertyBin.push({geom_id})
   });
   const geoJSON = generateGeojson(geomBin, propertyBin)
@@ -2485,96 +2506,59 @@ async function get_layer_geoms(req:Request, res:Response) {
     results: geoJSON,
   });
   } catch (err) {
-  console.log(err);
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'get_layer_geoms',
+    } as ApiResponse);
+  }
 }
-};
 
+async function update_layer_data(req:Request, res:Response) {
 
-async function send_geoms(req:Request, res:Response) {
-  // console.log('send geoms received serverside')
-  // const { featureCollection, token } = req.body
+  if (!req.query.user_id || !req.query.layername) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing user id or layername',
+      function: 'update_layer_data',
+    } as ApiResponse);
+  }
+  else if (!req.body.featureCollection) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing featureCollection in body',
+      function: 'update_layer_data',
+    } as ApiResponse);
+  }
 
-  // console.log(featureCollection)
-  // console.log(token)
-
-  // const [username, _] = token.split(':')
-
-  // let values = []
-  // const layername = featureCollection.features[0].properties['layername']
-  // featureCollection.features.forEach(f => {
-
-  //   const { geometry } = f
-
-  //   if (layername === f.properties['layername']) {
-  //     console.log("that's  great")
-  //   }
-  //   else {
-  //     return res.status(400).json({
-  //       status: 'failure',
-  //       message: 'Invalid input',
-  //       function: 'send_geoms',
-  //     } as ApiResponse);
-  //   }
-
-
-  //   /// formatting away double quotes. PSQL seems to only accept single quotes around the geojson
-    
-
-  //   values.push(
-  //     `(${layername}, ${user_id} , ST_GeomFromGeoJSON('${geometry}'))`
-  //   );
-  // })
-    
-
-    //// username cannot make multiple layers with the same name
-
-
-    // const dbQuery = `with s as (
-    //   select layer_id, layername
-    //   from LAYER_TABLE
-    //   where name = ${layername}
-    //   ), i as (
-    //   insert into LAYER_TABLE (name)
-    //   select ${layername}
-    //   where not exists (select ${layername} from s)
-    //   returning layer_id
-    //   )
-    //   select layer_id from i
-    //   union all
-    //   select layer_id from s;`
-
-    //   "INSERT INTO geometries (, user_id, geom) VALUES " + values;
-     
-  //     try {
-        
-  //       const dbResponse = await pool.query(dbQuery);
-  //   if (dbResponse.rowCount > 0) {
-  //     return res.status(200).json({
-  //       status: 'success',
-  //       message: dbResponse.rows[0].length,
-  //       function: 'admin_level_1',
-  //     } as ApiResponse);
-  //   }
-          
-
-
-  //       }
-  //      catch (err) {
-  //       console.log(err);
-  //     }
+  const { user_id,layername } = req.query
+  const { featureCollection } = req.body
+  const values = featureCollection.features.map(f => `(${user_id}, ST_GeomFromGeoJSON('${f.geometry}''))`)
+   
   
+    
+  const dbQuery = 
 
-  // return res.status(200).json({
-  //   status: 'success',
-  //   message: 'hello world',
-  //   function: 'send_geoms',
-  // } );
-
-}
-
-
-
-
+      "INSERT INTO geometries (user_id, geom) VALUES " + values.join(",")
+     
+    try {
+      
+      const dbResponse = await pool.query(dbQuery);
+      res.status(200).json({
+        status: "success",
+        results: dbResponse.rows,
+      });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({
+        status: 'failure',
+        message: 'Error encountered on server',
+        function: 'update_layer_data',
+      } as ApiResponse);
+    }
+  }
+      
 
 function error_log(req:Request, res:Response) {
   const { body } = req;
@@ -2628,17 +2612,14 @@ router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
-router.route('/send_geoms').post(send_geoms)
-router.route('/get_user_layer_metadata/:user').get(get_user_layer_metadata)
-router.route('/get_layer_geoms/:user/:layer_id').get(get_layer_geoms)
 
+// finished
+router.route('/get_user_layer_metadata').get(get_user_layer_metadata)
+router.route('/get_layer_geoms').get(get_layer_geoms)
 
-// router.route('/send_to_DB/:user_id').post(send_to_DB);
-// router.route('/get_user_geometries/:user_id').get(get_user_geometries);
-
- 
-
-
+// in development
+router.route('/update_layer_data').post(update_layer_data)
+router.route('/create_new_layer').get(create_new_layer)
 
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth, (req:Request, res:Response) => res.send('home/api/batch'));
