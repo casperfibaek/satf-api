@@ -16,8 +16,6 @@ import { callbackify } from 'util';
 import axios from "axios"
 import { timeStamp } from 'console';
 
-const os = require("os")
-
 const version = '0.2.2';
 
 interface ApiResponse {
@@ -2441,7 +2439,7 @@ async function create_new_layer(req:Request, res:Response) {
 
   const { user_id, layer_name } = req.query
 
-  const dbQuery = `INSERT INTO user_layers (user_id, name) VALUES (${user_id}, ${layer_name})`
+  const dbQuery = `INSERT INTO user_layers (name, user_id) VALUES (${layer_name}, ${user_id})`
 
   try {
     const dbResponse = await pool.query(dbQuery);
@@ -2470,7 +2468,7 @@ async function get_layer_geoms(req:Request, res:Response) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing username',
-      function: 'get_user_layer_metadata',
+      function: 'get_user_layer_geoms',
     } as ApiResponse);
   }
   
@@ -2532,7 +2530,7 @@ async function update_layer_data(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  const { user_id,layername } = req.query
+  const { user_id, layername } = req.query
   const { featureCollection } = req.body
   const values = featureCollection.features.map(f => `(${user_id}, ST_GeomFromGeoJSON('${f.geometry}''))`)
    
@@ -2540,7 +2538,7 @@ async function update_layer_data(req:Request, res:Response) {
     
   const dbQuery = 
 
-      "INSERT INTO geometries (user_id, geom) VALUES " + values.join(",")
+      "INSERT INTO geometries (user_id, layer_id, geom, description) VALUES " + values.join(",")
      
     try {
       

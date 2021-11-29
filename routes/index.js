@@ -51,7 +51,6 @@ var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
 var axios_1 = __importDefault(require("axios"));
-var os = require("os");
 var version = '0.2.2';
 var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
@@ -579,7 +578,7 @@ function population_density_buffer(req, res) {
 }
 function population_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, apiResponseArr, err_8;
+        var dbQuery, dbResponse, resp_arr, apiResponseArr, err_8;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -604,6 +603,7 @@ function population_buffer(req, res) {
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
+                    resp_arr = dbResponse.rows[0].pop_buf[0];
                     apiResponseArr = resp_arr.reduce(function (result, value, index, array) {
                         if (index % 2 === 0)
                             result.push(array.slice(index, index + 2));
@@ -2484,16 +2484,20 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
         });
     });
 }
-// Get user geometries
-// old function definition
-// app.get("/api/v1/geometries/:user_id", async (req, res) => {
 function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var user, dbQuery, dbResponse, err_44;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    user = req.params.user;
+                    if (!req.query.user) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username',
+                                "function": 'get_user_layer_metadata'
+                            })];
+                    }
+                    user = req.query.user;
                     console.log("fetching layer_metadata for " + user + " from database serverside");
                     dbQuery = "With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n      From user_geometries g\n      LEFT JOIN user_layers l ON g.layer_id = l.layer_id\n      GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)\n      \n      \n      \n      SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n      FROM selection s\n      LEFT JOIN users u ON s.user_id = u.id\n      WHERE username = '" + user + "'\n      GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count\n      ;";
                     _a.label = 1;
@@ -2510,49 +2514,71 @@ function get_user_layer_metadata(req, res) {
                     return [3 /*break*/, 4];
                 case 3:
                     err_44 = _a.sent();
-                    console.log(err_44);
-                    return [3 /*break*/, 4];
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_user_layer_metadata'
+                        })];
                 case 4: return [2 /*return*/];
             }
         });
     });
 }
 ;
+function create_new_layer(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, user_id, layer_name, dbQuery, dbResponse, err_45;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.user_id || !req.query.layer_name) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing user id or layer name',
+                                "function": 'create_new_layer'
+                            })];
+                    }
+                    _a = req.query, user_id = _a.user_id, layer_name = _a.layer_name;
+                    dbQuery = "INSERT INTO user_layers (name, user_id) VALUES (" + layer_name + ", " + user_id + ")";
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _b.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: dbResponse.rows,
+                            "function": "get_isochrone"
+                        })];
+                case 3:
+                    err_45 = _b.sent();
+                    console.log(err_45);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'create_new_layer'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        function generatePoint(coords, properties) {
-            if (properties === void 0) { properties = {}; }
-            var geometry = {
-                type: 'Point',
-                coordinates: coords.slice().reverse()
-            };
-            return {
-                type: 'Feature',
-                properties: properties,
-                geometry: geometry
-            };
-        }
-        // Generate a geojson from an array
-        function generateGeojson(geometryArray, propertiesArray) {
-            var collection = {
-                type: 'FeatureCollection',
-                features: []
-            };
-            for (var i = 0; i < geometryArray.length; i += 1) {
-                var geometry = geometryArray[i];
-                var properties = propertiesArray[i] ? propertiesArray[i] : {};
-                if (typeof geometry[0] === 'number' && typeof geometry[1] === 'number' && geometry.length === 2) {
-                    collection.features.push(generatePoint(geometry, properties));
-                }
-            }
-            return collection;
-        }
-        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
+        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_46;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     console.log('fetching geometries from database serverside.');
-                    _a = req.params, user = _a.user, layer_id = _a.layer_id;
+                    if (!req.query.user || !req.query.layer_id) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username',
+                                "function": 'get_user_layer_geoms'
+                            })];
+                    }
+                    _a = req.query, user = _a.user, layer_id = _a.layer_id;
                     console.log(user, layer_id);
                     dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id\n    FROM user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\t  INNER JOIN users u ON g.user_id = u.id\n    WHERE u.username = '" + user + "' AND g.layer_id = " + layer_id + "\n    ORDER BY g.layer_id";
                     geomBin = [];
@@ -2566,11 +2592,10 @@ function get_layer_geoms(req, res) {
                     console.log(dbResponse);
                     dbResponse.rows.forEach(function (row) {
                         var geom = row.geom, layer_id = row.layer_id, layer_name = row.layer_name, geom_id = row.geom_id;
-                        var _a = JSON.parse(geom).coordinates, lat = _a[0], lng = _a[1];
-                        geomBin.push([lat, lng]);
+                        geomBin.push(JSON.parse(geom).coordinates);
                         propertyBin.push({ geom_id: geom_id });
                     });
-                    geoJSON = generateGeojson(geomBin, propertyBin);
+                    geoJSON = (0, utils_1.generateGeojson)(geomBin, propertyBin);
                     console.log(geoJSON);
                     res.status(200).json({
                         status: "success",
@@ -2578,19 +2603,63 @@ function get_layer_geoms(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_45 = _b.sent();
-                    console.log(err_45);
-                    return [3 /*break*/, 4];
+                    err_46 = _b.sent();
+                    console.log(err_46);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_layer_geoms'
+                        })];
                 case 4: return [2 /*return*/];
             }
         });
     });
 }
-;
-function send_geoms(req, res) {
+function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            return [2 /*return*/];
+        var _a, user_id, layername, featureCollection, values, dbQuery, dbResponse, err_47;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.user_id || !req.query.layername) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing user id or layername',
+                                "function": 'update_layer_data'
+                            })];
+                    }
+                    else if (!req.body.featureCollection) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing featureCollection in body',
+                                "function": 'update_layer_data'
+                            })];
+                    }
+                    _a = req.query, user_id = _a.user_id, layername = _a.layername;
+                    featureCollection = req.body.featureCollection;
+                    values = featureCollection.features.map(function (f) { return "(" + user_id + ", ST_GeomFromGeoJSON('" + f.geometry + "''))"; });
+                    dbQuery = "INSERT INTO geometries (user_id, layer_id, geom, description) VALUES " + values.join(",");
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _b.sent();
+                    res.status(200).json({
+                        status: "success",
+                        results: dbResponse.rows
+                    });
+                    return [3 /*break*/, 4];
+                case 3:
+                    err_47 = _b.sent();
+                    console.log(err_47);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'update_layer_data'
+                        })];
+                case 4: return [2 /*return*/];
+            }
         });
     });
 }
@@ -2643,11 +2712,12 @@ router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
-router.route('/send_geoms').post(send_geoms);
-router.route('/get_user_layer_metadata/:user').get(get_user_layer_metadata);
-router.route('/get_layer_geoms/:user/:layer_id').get(get_layer_geoms);
-// router.route('/send_to_DB/:user_id').post(send_to_DB);
-// router.route('/get_user_geometries/:user_id').get(get_user_geometries);
+// finished
+router.route('/get_user_layer_metadata').get(get_user_layer_metadata);
+router.route('/get_layer_geoms').get(get_layer_geoms);
+// in development
+router.route('/update_layer_data').post(update_layer_data);
+router.route('/create_new_layer').get(create_new_layer);
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth_1["default"], function (req, res) { return res.send('home/api/batch'); });
 exports["default"] = router;
