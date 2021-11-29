@@ -2381,35 +2381,36 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
 
   async function get_user_layer_metadata(req:Request, res:Response) {
 
-    if (!req.query.user) {
+    if (!req.query.username) {
       return res.status(400).json({
         status: 'failure',
         message: 'Request missing username',
         function: 'get_user_layer_metadata',
       } as ApiResponse);
     }
-    const { user } = req.query
+    const { username } = req.query
     
     
 
-    console.log(`fetching layer_metadata for ${user} from database serverside`)
+    console.log(`fetching layer_metadata for ${username} from database serverside`)
 
 
     const dbQuery = 
-      `With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
-      From user_geometries g
-      LEFT JOIN user_layers l ON g.layer_id = l.layer_id
-      GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)
+      `With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
+      From user_layers l
+      LEFT JOIN user_geometries g ON l.layer_id = g.layer_id
+      GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)
       
       
       
-      SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
+      
+      SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
       FROM selection s
-      LEFT JOIN users u ON s.user_id = u.id
-      WHERE username = '${user}'
-      GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count
+      LEFT JOIN users u ON s.username = u.username
+      WHERE s.username = '${username}'
+      GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count
       ;`
-
+    console.log(dbQuery)
   try {
     const dbResponse = await pool.query(dbQuery);
     console.log(dbResponse)
@@ -2427,26 +2428,27 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
   }
 ;
 
-async function create_new_layer(req:Request, res:Response) {
-  
-  if (!req.query.user_id || !req.query.layer_name ) {
+async function create_layer(req:Request, res:Response) {
+  if (!req.query.username || !req.query.layername ) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing user id or layer name',
-      function: 'create_new_layer',
+      function: 'create_layer',
     } as ApiResponse);
   }
 
-  const { user_id, layer_name } = req.query
-
-  const dbQuery = `INSERT INTO user_layers (name, user_id) VALUES (${layer_name}, ${user_id})`
+  const { username, layername } = req.query
+  console.log(username, layername)
+  const dbQuery = `INSERT INTO user_layers (name, username) VALUES ('${layername}', '${username}')`
 
   try {
     const dbResponse = await pool.query(dbQuery);
+  console.log(dbResponse)
+
     return res.status(200).json({
       status: "success",
       message: dbResponse.rows,
-      function: "get_isochrone",
+      function: "create_layer",
     } as ApiResponse);
   }
   catch (err) {
@@ -2454,7 +2456,7 @@ async function create_new_layer(req:Request, res:Response) {
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
-      function: 'create_new_layer',
+      function: 'create_layer',
     } as ApiResponse);
   }
 }
@@ -2464,7 +2466,7 @@ async function get_layer_geoms(req:Request, res:Response) {
 
   console.log('fetching geometries from database serverside.')
 
-  if (!req.query.user || !req.query.layer_id) {
+  if (!req.query.username || !req.query.layer_id) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing username',
@@ -2473,8 +2475,8 @@ async function get_layer_geoms(req:Request, res:Response) {
   }
   
 
-  const { user, layer_id } = req.query
-  console.log(user, layer_id)
+  const { username, layer_id } = req.query
+  console.log(username, layer_id)
 
   const dbQuery = 
     `
@@ -2482,12 +2484,14 @@ async function get_layer_geoms(req:Request, res:Response) {
     FROM user_geometries g
     LEFT JOIN user_layers l ON g.layer_id=l.layer_id
 	  INNER JOIN users u ON g.user_id = u.id
-    WHERE u.username = '${user}' AND g.layer_id = ${layer_id}
+    WHERE u.username = '${username}' AND g.layer_id = ${layer_id}
     ORDER BY g.layer_id`
 
 
 
   const geomBin = []
+  // property bin is an array of objects. 1 object for each geom.
+  // [{geomid: geom_id, description: description... etc}, {.... }]
   const propertyBin = []
   try {
   const dbResponse = await pool.query(dbQuery);
@@ -2515,7 +2519,7 @@ async function get_layer_geoms(req:Request, res:Response) {
 
 async function update_layer_data(req:Request, res:Response) {
 
-  if (!req.query.user_id || !req.query.layername) {
+  if (!req.query.userId || !req.query.layername) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing user id or layername',
@@ -2530,15 +2534,15 @@ async function update_layer_data(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  const { user_id, layername } = req.query
+  const { userId, layername } = req.query
   const { featureCollection } = req.body
-  const values = featureCollection.features.map(f => `(${user_id}, ST_GeomFromGeoJSON('${f.geometry}''))`)
+  const values = featureCollection.features.map(f => `(${userId}, ST_GeomFromGeoJSON('${f.geometry}''))`)
    
   
     
   const dbQuery = 
 
-      "INSERT INTO geometries (user_id, layer_id, geom, description) VALUES " + values.join(",")
+      "INSERT INTO geometries (username, layer_id, geom, description) VALUES " + values.join(",")
      
     try {
       
@@ -2617,7 +2621,7 @@ router.route('/get_layer_geoms').get(get_layer_geoms)
 
 // in development
 router.route('/update_layer_data').post(update_layer_data)
-router.route('/create_new_layer').get(create_new_layer)
+router.route('/create_layer').post(create_layer)
 
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth, (req:Request, res:Response) => res.send('home/api/batch'));

@@ -2486,20 +2486,21 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
 }
 function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user, dbQuery, dbResponse, err_44;
+        var username, dbQuery, dbResponse, err_44;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.user) {
+                    if (!req.query.username) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Request missing username',
                                 "function": 'get_user_layer_metadata'
                             })];
                     }
-                    user = req.query.user;
-                    console.log("fetching layer_metadata for " + user + " from database serverside");
-                    dbQuery = "With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n      From user_geometries g\n      LEFT JOIN user_layers l ON g.layer_id = l.layer_id\n      GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)\n      \n      \n      \n      SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n      FROM selection s\n      LEFT JOIN users u ON s.user_id = u.id\n      WHERE username = '" + user + "'\n      GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count\n      ;";
+                    username = req.query.username;
+                    console.log("fetching layer_metadata for " + username + " from database serverside");
+                    dbQuery = "With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n      From user_layers l\n      LEFT JOIN user_geometries g ON l.layer_id = g.layer_id\n      GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)\n      \n      \n      \n      \n      SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n      FROM selection s\n      LEFT JOIN users u ON s.username = u.username\n      WHERE s.username = '" + username + "'\n      GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count\n      ;";
+                    console.log(dbQuery);
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2525,31 +2526,33 @@ function get_user_layer_metadata(req, res) {
     });
 }
 ;
-function create_new_layer(req, res) {
+function create_layer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, user_id, layer_name, dbQuery, dbResponse, err_45;
+        var _a, username, layername, dbQuery, dbResponse, err_45;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
-                    if (!req.query.user_id || !req.query.layer_name) {
+                    if (!req.query.username || !req.query.layername) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Request missing user id or layer name',
-                                "function": 'create_new_layer'
+                                "function": 'create_layer'
                             })];
                     }
-                    _a = req.query, user_id = _a.user_id, layer_name = _a.layer_name;
-                    dbQuery = "INSERT INTO user_layers (name, user_id) VALUES (" + layer_name + ", " + user_id + ")";
+                    _a = req.query, username = _a.username, layername = _a.layername;
+                    console.log(username, layername);
+                    dbQuery = "INSERT INTO user_layers (name, username) VALUES ('" + layername + "', '" + username + "')";
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _b.sent();
+                    console.log(dbResponse);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
                             message: dbResponse.rows,
-                            "function": "get_isochrone"
+                            "function": "create_layer"
                         })];
                 case 3:
                     err_45 = _b.sent();
@@ -2557,7 +2560,7 @@ function create_new_layer(req, res) {
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
-                            "function": 'create_new_layer'
+                            "function": 'create_layer'
                         })];
                 case 4: return [2 /*return*/];
             }
@@ -2566,21 +2569,21 @@ function create_new_layer(req, res) {
 }
 function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_46;
+        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_46;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     console.log('fetching geometries from database serverside.');
-                    if (!req.query.user || !req.query.layer_id) {
+                    if (!req.query.username || !req.query.layer_id) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Request missing username',
                                 "function": 'get_user_layer_geoms'
                             })];
                     }
-                    _a = req.query, user = _a.user, layer_id = _a.layer_id;
-                    console.log(user, layer_id);
-                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id\n    FROM user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\t  INNER JOIN users u ON g.user_id = u.id\n    WHERE u.username = '" + user + "' AND g.layer_id = " + layer_id + "\n    ORDER BY g.layer_id";
+                    _a = req.query, username = _a.username, layer_id = _a.layer_id;
+                    console.log(username, layer_id);
+                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id\n    FROM user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\t  INNER JOIN users u ON g.user_id = u.id\n    WHERE u.username = '" + username + "' AND g.layer_id = " + layer_id + "\n    ORDER BY g.layer_id";
                     geomBin = [];
                     propertyBin = [];
                     _b.label = 1;
@@ -2617,11 +2620,11 @@ function get_layer_geoms(req, res) {
 }
 function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, user_id, layername, featureCollection, values, dbQuery, dbResponse, err_47;
+        var _a, userId, layername, featureCollection, values, dbQuery, dbResponse, err_47;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
-                    if (!req.query.user_id || !req.query.layername) {
+                    if (!req.query.userId || !req.query.layername) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Request missing user id or layername',
@@ -2635,10 +2638,10 @@ function update_layer_data(req, res) {
                                 "function": 'update_layer_data'
                             })];
                     }
-                    _a = req.query, user_id = _a.user_id, layername = _a.layername;
+                    _a = req.query, userId = _a.userId, layername = _a.layername;
                     featureCollection = req.body.featureCollection;
-                    values = featureCollection.features.map(function (f) { return "(" + user_id + ", ST_GeomFromGeoJSON('" + f.geometry + "''))"; });
-                    dbQuery = "INSERT INTO geometries (user_id, layer_id, geom, description) VALUES " + values.join(",");
+                    values = featureCollection.features.map(function (f) { return "(" + userId + ", ST_GeomFromGeoJSON('" + f.geometry + "''))"; });
+                    dbQuery = "INSERT INTO geometries (username, layer_id, geom, description) VALUES " + values.join(",");
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
@@ -2717,7 +2720,7 @@ router.route('/get_user_layer_metadata').get(get_user_layer_metadata);
 router.route('/get_layer_geoms').get(get_layer_geoms);
 // in development
 router.route('/update_layer_data').post(update_layer_data);
-router.route('/create_new_layer').get(create_new_layer);
+router.route('/create_layer').post(create_layer);
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth_1["default"], function (req, res) { return res.send('home/api/batch'); });
 exports["default"] = router;
