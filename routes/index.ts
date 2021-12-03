@@ -2470,7 +2470,7 @@ async function get_layer_geoms(req:Request, res:Response) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing username',
-      function: 'get_user_layer_geoms',
+      function: 'get_layer_geoms',
     } as ApiResponse);
   }
   
@@ -2480,11 +2480,16 @@ async function get_layer_geoms(req:Request, res:Response) {
 
   const dbQuery = 
     `
-    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id
+    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name
+
     FROM user_geometries g
+
     LEFT JOIN user_layers l ON g.layer_id=l.layer_id
-	  INNER JOIN users u ON g.user_id = u.id
+
+    INNER JOIN users u ON g.username = u.username
+
     WHERE u.username = '${username}' AND g.layer_id = ${layer_id}
+
     ORDER BY g.layer_id`
 
 
@@ -2518,11 +2523,11 @@ async function get_layer_geoms(req:Request, res:Response) {
 }
 
 async function update_layer_data(req:Request, res:Response) {
-
-  if (!req.query.userId || !req.query.layername) {
+  console.log(req.query.username, req.query.layerId)
+  if (!req.query.username || !req.query.layerId) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing user id or layername',
+      message: 'Request missing username or layerId',
       function: 'update_layer_data',
     } as ApiResponse);
   }
@@ -2534,16 +2539,17 @@ async function update_layer_data(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  const { userId, layername } = req.query
+  const { username, layerId } = req.query
   const { featureCollection } = req.body
-  const values = featureCollection.features.map(f => `(${userId}, ST_GeomFromGeoJSON('${f.geometry}''))`)
+  console.log(featureCollection)
+  const values = featureCollection.features.map(f => `('${layerId}' ,'${username}', ST_GeomFromGeoJSON('${JSON.stringify(f.geometry)}'))`)
    
   
-    
   const dbQuery = 
-
-      "INSERT INTO geometries (username, layer_id, geom, description) VALUES " + values.join(",")
-     
+  
+  `INSERT INTO user_geometries (layer_id, username, geom) VALUES ${values.join(",")}`  
+  
+  console.log(dbQuery)
     try {
       
       const dbResponse = await pool.query(dbQuery);

@@ -2578,12 +2578,12 @@ function get_layer_geoms(req, res) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Request missing username',
-                                "function": 'get_user_layer_geoms'
+                                "function": 'get_layer_geoms'
                             })];
                     }
                     _a = req.query, username = _a.username, layer_id = _a.layer_id;
                     console.log(username, layer_id);
-                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id\n    FROM user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\t  INNER JOIN users u ON g.user_id = u.id\n    WHERE u.username = '" + username + "' AND g.layer_id = " + layer_id + "\n    ORDER BY g.layer_id";
+                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name\n\n    FROM user_geometries g\n\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\n    INNER JOIN users u ON g.username = u.username\n\n    WHERE u.username = '" + username + "' AND g.layer_id = " + layer_id + "\n\n    ORDER BY g.layer_id";
                     geomBin = [];
                     propertyBin = [];
                     _b.label = 1;
@@ -2620,14 +2620,15 @@ function get_layer_geoms(req, res) {
 }
 function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, userId, layername, featureCollection, values, dbQuery, dbResponse, err_47;
+        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_47;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
-                    if (!req.query.userId || !req.query.layername) {
+                    console.log(req.query.username, req.query.layerId);
+                    if (!req.query.username || !req.query.layerId) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing user id or layername',
+                                message: 'Request missing username or layerId',
                                 "function": 'update_layer_data'
                             })];
                     }
@@ -2638,10 +2639,12 @@ function update_layer_data(req, res) {
                                 "function": 'update_layer_data'
                             })];
                     }
-                    _a = req.query, userId = _a.userId, layername = _a.layername;
+                    _a = req.query, username = _a.username, layerId = _a.layerId;
                     featureCollection = req.body.featureCollection;
-                    values = featureCollection.features.map(function (f) { return "(" + userId + ", ST_GeomFromGeoJSON('" + f.geometry + "''))"; });
-                    dbQuery = "INSERT INTO geometries (username, layer_id, geom, description) VALUES " + values.join(",");
+                    console.log(featureCollection);
+                    values = featureCollection.features.map(function (f) { return "('" + layerId + "' ,'" + username + "', ST_GeomFromGeoJSON('" + JSON.stringify(f.geometry) + "'))"; });
+                    dbQuery = "INSERT INTO user_geometries (layer_id, username, geom) VALUES " + values.join(",");
+                    console.log(dbQuery);
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
