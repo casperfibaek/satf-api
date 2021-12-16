@@ -538,27 +538,32 @@ async function population_buffer(req:Request, res:Response) {
 
     SELECT CASE 
       WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN --- ghana bbox
-        ( With gh_query AS(
-          SELECT 
-            SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime,
-            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime,
-            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted
+        ( With gh_daytime AS(
+        SELECT 
+          SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime
+          FROM ghana_pop_daytime a, const WHERE (ST_Intersects(const.pp_geom, a.rast))),
+          
+          gh_nighttime AS(
+            SELECT
+            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime
+            FROM ghana_pop_nighttime b, const WHERE (ST_Intersects(const.pp_geom, b.rast))),
 
-          FROM const
-          LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(const.pp_geom, a.rast))
-          LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(const.pp_geom, b.rast))
-          LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(const.pp_geom, c.rast)))
+          gh_unweighted AS(
+            SELECT
+            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted
+            FROM ghana_pop_unweighted c, const WHERE (ST_Intersects(const.pp_geom, c.rast)))
 
           SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))
-          FROM gh_query)
+            FROM gh_daytime, gh_nighttime, gh_unweighted)
+
       WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN --- TZA bbox
         (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(
           tza_ppp_2020.rast, 
           const.pp_geom
-        ))).sum::int) as tza_pop
-        FROM
+          ))).sum::int) as tza_pop
+          FROM
           tza_ppp_2020, const
-        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
+          WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
         SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))
         FROM tza_query)
     END as pop_buf
@@ -2623,7 +2628,7 @@ router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
 router.route('/demography').get(auth, demography);
-// router.route('/population_density_buffer').get(auth, population_density_buffer);
+router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/population_buffer').get(auth, population_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);
