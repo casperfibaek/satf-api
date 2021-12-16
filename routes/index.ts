@@ -2592,7 +2592,7 @@ router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
 router.route('/demography').get(auth, demography);
-// router.route('/population_density_buffer').get(auth, population_density_buffer);
+router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/population_buffer').get(auth, population_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);
