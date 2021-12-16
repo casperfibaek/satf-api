@@ -14,6 +14,8 @@
   "author": "Casper Fibaek @ NIRAS",
   "license": "Unlicenced for now",
   "dependencies": {
+    "@turf/buffer": "^6.5.0",
+    "@turf/helpers": "^6.5.0",
     "axios": "^0.24.0",
     "body-parser": "^1.19.0",
     "compression": "^1.7.4",
@@ -22,6 +24,7 @@
     "express": "^4.17.1",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
+    "node-fetch": "^2.6.1",
     "nodemon": "^2.0.14",
     "pg": "^8.7.1"
   },
