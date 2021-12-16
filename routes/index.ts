@@ -2461,6 +2461,39 @@ async function create_layer(req:Request, res:Response) {
   }
 }
 
+async function delete_layer(req:Request, res:Response) {
+  if (!req.query.layer_id) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing username',
+      function: 'delete_layer',
+    } as ApiResponse);
+  }
+  
+  const { layer_id } = req.query
+
+  const dbQuery = `
+    DELETE
+    FROM user_layers
+    WHERE layer_id=${layer_id}`
+    try {
+      const dbResponse = await pool.query(dbQuery);
+      return res.status(200).json({
+        status: "success",
+        message: "layer deleted"
+    });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({
+        status: 'failure',
+        message: 'Error encountered on server',
+        function: 'delete_layer',
+      } as ApiResponse);
+    }
+    
+}
+
+
 async function get_layer_geoms(req:Request, res:Response) {
 
 
@@ -2474,9 +2507,7 @@ async function get_layer_geoms(req:Request, res:Response) {
     } as ApiResponse);
   }
   
-
   const { username, layer_id } = req.query
-  console.log(username, layer_id)
 
   const dbQuery = 
     `
@@ -2624,6 +2655,7 @@ router.route('/error_log').post(error_log);
 // finished
 router.route('/get_user_layer_metadata').get(get_user_layer_metadata)
 router.route('/get_layer_geoms').get(get_layer_geoms)
+router.route('/delete_layer').get(delete_layer)
 
 // in development
 router.route('/update_layer_data').post(update_layer_data)

@@ -2567,9 +2567,47 @@ function create_layer(req, res) {
         });
     });
 }
+function delete_layer(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var layer_id, dbQuery, dbResponse, err_46;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.layer_id) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username',
+                                "function": 'delete_layer'
+                            })];
+                    }
+                    layer_id = req.query.layer_id;
+                    dbQuery = "\n    DELETE\n    FROM user_layers\n    WHERE layer_id=" + layer_id;
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: "layer deleted"
+                        })];
+                case 3:
+                    err_46 = _a.sent();
+                    console.log(err_46);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'delete_layer'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_46;
+        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_47;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2582,7 +2620,6 @@ function get_layer_geoms(req, res) {
                             })];
                     }
                     _a = req.query, username = _a.username, layer_id = _a.layer_id;
-                    console.log(username, layer_id);
                     dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name\n\n    FROM user_geometries g\n\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\n    INNER JOIN users u ON g.username = u.username\n\n    WHERE u.username = '" + username + "' AND g.layer_id = " + layer_id + "\n\n    ORDER BY g.layer_id";
                     geomBin = [];
                     propertyBin = [];
@@ -2606,8 +2643,8 @@ function get_layer_geoms(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_46 = _b.sent();
-                    console.log(err_46);
+                    err_47 = _b.sent();
+                    console.log(err_47);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2620,7 +2657,7 @@ function get_layer_geoms(req, res) {
 }
 function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_47;
+        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_48;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2657,8 +2694,8 @@ function update_layer_data(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_47 = _b.sent();
-                    console.log(err_47);
+                    err_48 = _b.sent();
+                    console.log(err_48);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2721,6 +2758,7 @@ router.route('/error_log').post(error_log);
 // finished
 router.route('/get_user_layer_metadata').get(get_user_layer_metadata);
 router.route('/get_layer_geoms').get(get_layer_geoms);
+router.route('/delete_layer').get(delete_layer);
 // in development
 router.route('/update_layer_data').post(update_layer_data);
 router.route('/create_layer').post(create_layer);
