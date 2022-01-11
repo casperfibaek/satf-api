@@ -2468,7 +2468,7 @@ async function avg_NDVI(req:Request, res:Response) {
 
 async function get_user_layer_metadata(req:Request, res:Response) {
 
-  if (!req.query.user) {
+  if (!req.query.username) {
     return res.status(400).json({
       status: 'failure',
       message: 'Request missing username',
@@ -2479,7 +2479,7 @@ async function get_user_layer_metadata(req:Request, res:Response) {
   
   
 
-  console.log(`fetching layer_metadata for ${user} from database serverside`)
+  console.log(`fetching layer_metadata for ${username} from database serverside`)
 
 
   const dbQuery = 
@@ -2493,7 +2493,7 @@ async function get_user_layer_metadata(req:Request, res:Response) {
     SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
     FROM selection s
     LEFT JOIN users u ON s.user_id = u.id
-    WHERE username = '${user}'
+    WHERE username = '${username}'
     GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count
     ;`
 
