@@ -2639,7 +2639,7 @@ function create_layer(req, res) {
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
                             message: dbResponse.rows,
-                            "function": "create_new_layer"
+                            "function": "create_layer"
                         })];
                 case 3:
                     err_47 = _b.sent();
@@ -2656,15 +2656,7 @@ function create_layer(req, res) {
 }
 function delete_layer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-<<<<<<< HEAD
-<<<<<<< HEAD
-        var layerId, dbQuery, dbResponse, err_46;
-=======
-        var layer_id, dbQuery, dbResponse, err_47;
->>>>>>> 34d1329245f9db89636726ae189fc3871678142a
-=======
-        var layer_id, dbQuery, dbResponse, err_48;
->>>>>>> d38d7f925e34ad0b0c34f2519e0bfabbfef8ec97
+        var layerId, dbQuery, dbResponse, err_48;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2685,6 +2677,7 @@ function delete_layer(req, res) {
                     dbResponse = _a.sent();
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
+                            results: dbResponse.rows,
                             message: "layer deleted"
                         })];
                 case 3:
