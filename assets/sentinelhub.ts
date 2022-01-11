@@ -31,10 +31,29 @@ const client_id = "9671cc49-79be-46b2-9746-566f5db1304e"
 const client_secret = "J+HmLAh:XkANGXF<:L|cnUcHgOT3J0:/QO{3.aWV"
 
 //get max NDVI between two defined dates, and a bounding box)
-export async function maxNDVIMonthly(lng1, lat1, lng2, lat2, from_date, to_date) { 
-    const bbox = [lng1, lat1, lng2, lat2]
+export async function maxNDVIMonthly(lng, lat, from_date, to_date, userbuffer=100) { 
+    const coords = point([lng, lat])
+
+    let buff;
+    
+    if (userbuffer === 100 ||
+        userbuffer === 500 ||
+        userbuffer === 1000) {
+          buff = (buffer(coords, userbuffer/1000, {units: 'kilometers'}))    
+      }
+    else {
+       return 'ValueError: buffer is not valid, choose between 100, 500 and 1000 meters '
+    }
+
+    const geometry = bbox(buff)
+
+    console.log("bbox:"+geometry)
+    console.log("to_date:"+to_date)
+    console.log("from_date:"+from_date)
+
+    // const bbox = [lng1, lat1, lng2, lat2]
     const token = await requestAuthToken(client_id, client_secret)
-    console.log(token)
+    // console.log(token)
 
     const response = await fetch("https://services.sentinel-hub.com/api/v1/statistics", {
     method: "POST",
@@ -45,12 +64,11 @@ export async function maxNDVIMonthly(lng1, lat1, lng2, lat2, from_date, to_date)
     body: JSON.stringify({ 
     "input": {
     "bounds": {
-      "bbox": bbox
+      "bbox": geometry
     },
     "data": [
       {
         "dataFilter": {
-          "maxCloudCoverage": 20,
           "mosaickingOrder": "leastCC"
         },
         "type": "sentinel-2-l2a"
@@ -118,20 +136,13 @@ function setup() {
 
 }
 
-//function getting NDVI (avg?) for last x days (x-days to now), on a buffered point (start 1000m)
+//function getting NDVI (avg?) for last x days (x-days to now), on a buffered point (between 100m, 500m and 1000m)
 
 export async function avgNDVI(lat, lng, to_date, from_date, userbuffer = 100) { 
-    const bbox_coords = [35.596068,-6.129418,35.604866,-6.122740] 
+
     const coords = point([lng, lat])
 
     let buff;
-    // if (userbuffer == 500) {
-    //   buff = (buffer(coords, 500/1000, {units: 'kilometers'}))
-    // } else if (userbuffer == 1000) {
-    //   buff = (buffer(coords, 1000/1000, {units: 'kilometers'}))
-    // } else {buff = (buffer(coords, 100/1000, {units: 'kilometers'}))
-    // }
-    // console.log(buff)
     
     if (userbuffer === 100 ||
         userbuffer === 500 ||
