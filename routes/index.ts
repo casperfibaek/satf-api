@@ -16,6 +16,7 @@ import { maxNDVIMonthly, avgNDVI } from '../assets/sentinelhub';
 
 import buffer from '@turf/buffer';
 import { point } from '@turf/helpers';
+import bbox from '@turf/bbox';
 import axios from "axios"
 // import fetch from 'node-fetch';
 import { timeStamp } from 'console';
@@ -32,7 +33,6 @@ interface ApiResponse {
   token: string,
 }
 
-// const maxNDVIMonthly = sentinelhub();
 const openLocationCode = Pluscodes();
 const router = express.Router();
 
@@ -281,12 +281,9 @@ async function api_version(req:Request, res:Response) {
   // console.log(os.hostname())
   // console.log(host)
   console.log(req)
-  // api envrinoment
+  // api environment
   // os.hostname()
-  var subtract_date = subtractDays(new Date(), 30)
-  const from_date = subtract_date.toISOString() 
-  // var from_date = subtractDays(new Date(), 10)
-  console.log(from_date)
+ 
 
   return res.status(200).json({
     status: 'success',
@@ -2221,24 +2218,36 @@ async function get_forecast(req: Request, res: Response) {
         key
     );
     const data = await response.data;
-
+    
     const format_time = (s) => new Date(s * 1e3).toISOString().slice(0,-14);
 
-    const list_forecast = data.daily.map(( props ) => {
-      const { weather, dt, temp, humidity, rain, clouds, icon } = props
-      return {
+
+    let list_forecast = data.daily.map(( props ) => {
+      const { weather, dt, temp, humidity, rain, clouds, icon, pop } = props
+      
+      let entry = {
         date: format_time(dt),
         description: weather[0].description,
         // icon: weather[0].icon,
-        temp_min: temp.min, 
-        temp_max: temp.max,
-        humidity,
-        rain,
-        clouds
-
+        temp_min_c: temp.min, 
+        temp_max_c: temp.max,
+        humidity_perc: humidity,
+        rain_mm: rain,
+        clouds_perc: clouds,
+        probability_of_precipitation_perc: pop
+        
       } 
-    }); 
+      if (data.alerts) {
+    entry = {
+      ...entry,
+      alerts: data.alerts[0].event + data.alerts[0].description
+    }
+  } 
 
+      return entry
+    });
+ 
+          
     return res.status(200).json({
       status: "success",
       message: list_forecast,
@@ -2275,14 +2284,12 @@ async function get_api_isochrone(req, res) {
   }
 
   const {profile, lng, lat, minutes} = req.query
-  try {
 
+  try {
 
   const isochrone = await _get_isochrone(profile, lng, lat, minutes)
 
   // console.log(isochrone)
-
-
 
       return res.status(200).json({
       status: "success",
@@ -2412,28 +2419,40 @@ async function maxNDVI_monthly(req:Request, res:Response) {
     // } as ApiResponse);
   }
 }
-
-async function avg_NDVI(lat, lng, number_days) {
+// average NDVI starting from today to back specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+async function avg_NDVI(req:Request, res:Response) {
   
-  // const {lat, lng, number_days} = req.query
-  const latlng = [35.596068, -6.129418]
-  const coords = point([35.596068, -6.129418])
-  
-  const geometry = buffer(coords, 1000/1000, {units: 'kilometers'})
-  console.log("geom:" + geometry)
   const to_date = new Date().toISOString().split('.')[0]+"Z" 
-  console.log("to_date:"+to_date)
-  
-  const start_date = subtractDays(new Date(), number_days)
-  // console.log(subtract_date)
-  // const start_date = subtract_date.toISOString().split('.')[0]+"Z" 
-  console.log("date:" + start_date)
-  
+
+  const get_date = subtractDays(to_date, req.query.number_days)
+  const from_date = get_date.toISOString().split('.')[0]+"Z"
+
+  // const buffs = [500, 1000]
+  // let buff;
+  // if buffs.indexOf(Number(req.query.buffer)) >= 0 
+
   try {
-    const avg_ndvi = await avgNDVI(geometry, start_date)
+    const avg_ndvi = await avgNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, Number(req.query.buffer))
+    // console.log(avg_ndvi.data.interval)
+    // console.log(avg_ndvi.data.outputs.data.bands.B0.stats)
 
-    return  avg_ndvi
+    const list_avgNDVI = avg_ndvi.data.map((props) => {
+      const {interval, outputs} = props
+      return {
+        dates: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
+        min: outputs.data.bands.B0.stats.min,
+        max: outputs.data.bands.B0.stats.max,
+        mean: outputs.data.bands.B0.stats.mean,
+        stDev: outputs.data.bands.B0.stats.stDev,
+      }
+      
+    });
 
+    return res.status(200).json({
+      status: 'success',
+      message: list_avgNDVI,
+      function: 'avgNDVI',
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
     // return res.status(500).json({
@@ -2511,7 +2530,7 @@ async function create_new_layer(req:Request, res:Response) {
     return res.status(200).json({
       status: "success",
       message: dbResponse.rows,
-      function: "get_isochrone",
+      function: "create_new_layer",
     } as ApiResponse);
   }
   catch (err) {

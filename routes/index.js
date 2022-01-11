@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -51,12 +62,9 @@ var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
 var sentinelhub_1 = require("../assets/sentinelhub");
-var buffer_1 = __importDefault(require("@turf/buffer"));
-var helpers_1 = require("@turf/helpers");
 var axios_1 = __importDefault(require("axios"));
 var os = require("os");
 var version = '0.2.2';
-// const maxNDVIMonthly = sentinelhub();
 var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
 var pool = new pg_1["default"].Pool(credentials_1["default"]);
@@ -315,7 +323,7 @@ function admin_level_2(req, res) {
 }
 function api_version(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var host, origin, subtract_date, from_date;
+        var host, origin;
         return __generator(this, function (_a) {
             host = req.get('host');
             origin = req.headers.origin;
@@ -324,10 +332,8 @@ function api_version(req, res) {
             // console.log(os.hostname())
             // console.log(host)
             console.log(req);
-            subtract_date = (0, utils_1.subtractDays)(new Date(), 30);
-            from_date = subtract_date.toISOString();
-            // var from_date = subtractDays(new Date(), 10)
-            console.log(from_date);
+            // api environment
+            // os.hostname()
             return [2 /*return*/, res.status(200).json({
                     status: 'success',
                     message: { "version": version, "api_environment": host, "client_environment": origin },
@@ -2275,7 +2281,7 @@ function mce_coverage(req, res) {
 // get weather forecats for 7 days from Open Weather api - string output for now
 function get_forecast(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var key, response, data, format_time_1, list_forecast, err_39;
+        var key, response, data_1, format_time_1, list_forecast, err_39;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2308,20 +2314,25 @@ function get_forecast(req, res) {
                     response = _a.sent();
                     return [4 /*yield*/, response.data];
                 case 3:
-                    data = _a.sent();
+                    data_1 = _a.sent();
                     format_time_1 = function (s) { return new Date(s * 1e3).toISOString().slice(0, -14); };
-                    list_forecast = data.daily.map(function (props) {
-                        var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds, icon = props.icon;
-                        return {
+                    list_forecast = data_1.daily.map(function (props) {
+                        var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds, icon = props.icon, pop = props.pop;
+                        var entry = {
                             date: format_time_1(dt),
                             description: weather[0].description,
                             // icon: weather[0].icon,
-                            temp_min: temp.min,
-                            temp_max: temp.max,
-                            humidity: humidity,
-                            rain: rain,
-                            clouds: clouds
+                            temp_min_c: temp.min,
+                            temp_max_c: temp.max,
+                            humidity_perc: humidity,
+                            rain_mm: rain,
+                            clouds_perc: clouds,
+                            probability_of_precipitation_perc: pop
                         };
+                        if (data_1.alerts) {
+                            entry = __assign(__assign({}, entry), { alerts: data_1.alerts[0].event + data_1.alerts[0].description });
+                        }
+                        return entry;
                     });
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
@@ -2519,29 +2530,40 @@ function maxNDVI_monthly(req, res) {
         });
     });
 }
-function avg_NDVI(lat, lng, number_days) {
+// average NDVI starting from today to back specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+function avg_NDVI(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var latlng, coords, geometry, to_date, start_date, avg_ndvi, err_45;
+        var to_date, get_date, from_date, avg_ndvi, list_avgNDVI, err_45;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    latlng = [35.596068, -6.129418];
-                    coords = (0, helpers_1.point)([35.596068, -6.129418]);
-                    geometry = (0, buffer_1["default"])(coords, 1000 / 1000, { units: 'kilometers' });
-                    console.log("geom:" + geometry);
                     to_date = new Date().toISOString().split('.')[0] + "Z";
-                    console.log("to_date:" + to_date);
-                    start_date = (0, utils_1.subtractDays)(new Date(), number_days);
-                    // console.log(subtract_date)
-                    // const start_date = subtract_date.toISOString().split('.')[0]+"Z" 
-                    console.log("date:" + start_date);
+                    get_date = (0, utils_1.subtractDays)(to_date, req.query.number_days);
+                    from_date = get_date.toISOString().split('.')[0] + "Z";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, (0, sentinelhub_1.avgNDVI)(geometry, start_date)];
+                    return [4 /*yield*/, (0, sentinelhub_1.avgNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, Number(req.query.buffer))
+                        // console.log(avg_ndvi.data.interval)
+                        // console.log(avg_ndvi.data.outputs.data.bands.B0.stats)
+                    ];
                 case 2:
                     avg_ndvi = _a.sent();
-                    return [2 /*return*/, avg_ndvi];
+                    list_avgNDVI = avg_ndvi.data.map(function (props) {
+                        var interval = props.interval, outputs = props.outputs;
+                        return {
+                            dates: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                            min: outputs.data.bands.B0.stats.min,
+                            max: outputs.data.bands.B0.stats.max,
+                            mean: outputs.data.bands.B0.stats.mean,
+                            stDev: outputs.data.bands.B0.stats.stDev
+                        };
+                    });
+                    return [2 /*return*/, res.status(200).json({
+                            status: 'success',
+                            message: list_avgNDVI,
+                            "function": 'avgNDVI'
+                        })];
                 case 3:
                     err_45 = _a.sent();
                     console.log(err_45);
@@ -2616,7 +2638,7 @@ function create_new_layer(req, res) {
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
                             message: dbResponse.rows,
-                            "function": "get_isochrone"
+                            "function": "create_new_layer"
                         })];
                 case 3:
                     err_47 = _b.sent();

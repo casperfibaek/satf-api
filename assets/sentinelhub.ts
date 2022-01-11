@@ -2,6 +2,9 @@
 import fetch from 'node-fetch';
 import axios from "axios";
 import qs from "qs";
+import buffer from '@turf/buffer';
+import { point } from '@turf/helpers';
+import bbox from '@turf/bbox';
 
 
 async function requestAuthToken(Id, Secret) {
@@ -16,7 +19,7 @@ async function requestAuthToken(Id, Secret) {
     )}&client_secret=${encodeURIComponent(Secret)}`,
   });
   const access_token = await response.data.access_token
-
+  
   return access_token
 
   } catch (err) {
@@ -31,6 +34,7 @@ const client_secret = "J+HmLAh:XkANGXF<:L|cnUcHgOT3J0:/QO{3.aWV"
 export async function maxNDVIMonthly(lng1, lat1, lng2, lat2, from_date, to_date) { 
     const bbox = [lng1, lat1, lng2, lat2]
     const token = await requestAuthToken(client_id, client_secret)
+    console.log(token)
 
     const response = await fetch("https://services.sentinel-hub.com/api/v1/statistics", {
     method: "POST",
@@ -46,7 +50,7 @@ export async function maxNDVIMonthly(lng1, lat1, lng2, lat2, from_date, to_date)
     "data": [
       {
         "dataFilter": {
-          "maxCloudCoverage": 10,
+          "maxCloudCoverage": 20,
           "mosaickingOrder": "leastCC"
         },
         "type": "sentinel-2-l2a"
@@ -116,13 +120,34 @@ function setup() {
 
 //function getting NDVI (avg?) for last x days (x-days to now), on a buffered point (start 1000m)
 
-export async function avgNDVI(geometry, start_date) { 
-    const bbox = [geometry]
-    console.log("bbox:"+bbox)
-    const to_date = new Date().toISOString().split('.')[0]+"Z" 
+export async function avgNDVI(lat, lng, to_date, from_date, userbuffer = 100) { 
+    const bbox_coords = [35.596068,-6.129418,35.604866,-6.122740] 
+    const coords = point([lng, lat])
+
+    let buff;
+    // if (userbuffer == 500) {
+    //   buff = (buffer(coords, 500/1000, {units: 'kilometers'}))
+    // } else if (userbuffer == 1000) {
+    //   buff = (buffer(coords, 1000/1000, {units: 'kilometers'}))
+    // } else {buff = (buffer(coords, 100/1000, {units: 'kilometers'}))
+    // }
+    // console.log(buff)
+    
+    if (userbuffer === 100 ||
+        userbuffer === 500 ||
+        userbuffer === 1000) {
+          buff = (buffer(coords, userbuffer/1000, {units: 'kilometers'}))    
+      }
+    else {
+       throw 'ValueError: buffer is not valid, choose between 100, 500 and 1000 meters '
+    }
+
+    const geometry = bbox(buff)
+
+    console.log("bbox:"+geometry)
     console.log("to_date:"+to_date)
-    const from_date = start_date
     console.log("from_date:"+from_date)
+
     const token = await requestAuthToken(client_id, client_secret)
 
     const response = await fetch("https://services.sentinel-hub.com/api/v1/statistics", {
@@ -134,12 +159,11 @@ export async function avgNDVI(geometry, start_date) {
     body: JSON.stringify({ 
     "input": {
     "bounds": {
-      "bbox": bbox
+      "bbox": geometry
     },
     "data": [
       {
         "dataFilter": {
-          "maxCloudCoverage": 10,
           "mosaickingOrder": "leastCC"
         },
         "type": "sentinel-2-l2a"
@@ -149,59 +173,61 @@ export async function avgNDVI(geometry, start_date) {
   "aggregation": {
     "timeRange": {
       "from": from_date,
-      "to": to_date
+      "to":to_date
     },
     "aggregationInterval": {
-      "of": "P5D"
+      "of": "P5D",
+      "lastIntervalBehavior": "SHORTEN"
     },
-    "width": 512,
-    "height": 343.697,
     "evalscript": `
    //VERSION=3
 function setup() {
-    return {
-        input: [{
-        bands: [
-            "B04",
-            "B08",
-            "SCL",
-            "dataMask"
-        ]
-        }],
-        mosaicking: "ORBIT",
+  return {
+    input: [{
+      bands: [
+        "B04",
+        "B08",
+        "SCL",
+        "dataMask"
+      ]
+    }],
     output: [
       {
         id: "data",
-        bands: ["monthly_max_ndvi"]
+        bands: 1
       },
       {
         id: "dataMask",
         bands: 1
       }]
-    };
-    }
+  }
+}
 
-    function evaluatePixel(samples) {
-       var max = 0;
-    var hasData = 0;
-    for (var i=0;i<samples.length;i++) {
-      if (samples[i].dataMask == 1 && samples[i].SCL != 6 && samples[i].B04+samples[i].B08 != 0 ){
-        hasData = 1;
-        var ndvi = (samples[i].B08 - samples[i].B04)/(samples[i].B08 + samples[i].B04);
-        max = ndvi > max ? ndvi:max;
-      }
+function evaluatePixel(samples) {
+    let ndvi = (samples.B08 - samples.B04)/(samples.B08 + samples.B04)
+    
+    var validNDVIMask = 1
+    if (samples.B08 + samples.B04 == 0 ){
+        validNDVIMask = 0
     }
     
-    return {
-        data: [max],
-        dataMask: [hasData]
-    };
+    var noWaterMask = 1
+    if (samples.SCL == 6 ){
+        noWaterMask = 0
     }
+
+    return {
+        data: [ndvi],
+        // Exclude nodata pixels, pixels where ndvi is not defined and water pixels from statistics:
+        dataMask: [samples.dataMask * validNDVIMask * noWaterMask]
+    }
+}
 
         `
     }
 })
 }); 
+    
     return response.json()
     
 

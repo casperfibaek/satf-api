@@ -43,11 +43,11 @@ export function generateGeojson(geometryArray:number[][], propertiesArray:any[])
   return collection;
 }
 
-// add days to designated date
+// subtract days to designated date
 
-export function subtractDays(date, days) {
+export function subtractDays(date:any, days:any) {
   var result = new Date(date);
-  result.setDate(result.getDate() - days);
+  result.setDate(result.getDate() - days); 
  
   return result;
 }

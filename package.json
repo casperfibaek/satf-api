@@ -14,6 +14,7 @@
   "author": "Casper Fibaek @ NIRAS",
   "license": "Unlicenced for now",
   "dependencies": {
+    "@turf/bbox": "^6.5.0",
     "@turf/buffer": "^6.5.0",
     "@turf/helpers": "^6.5.0",
     "axios": "^0.24.0",

@@ -52,7 +52,7 @@ function generateGeojson(geometryArray, propertiesArray) {
     return collection;
 }
 exports.generateGeojson = generateGeojson;
-// add days to designated date
+// subtract days to designated date
 function subtractDays(date, days) {
     var result = new Date(date);
     result.setDate(result.getDate() - days);
