@@ -5,15 +5,20 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
-import { translateUrbanClasses, generateGeojson } from './utils';
+import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays } from './utils';
 import {
   isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
 } from './validators';
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 import { callbackify } from 'util';
+import { maxNDVIMonthly, avgNDVI } from '../assets/sentinelhub';
 
+import buffer from '@turf/buffer';
+import { point } from '@turf/helpers';
+import bbox from '@turf/bbox';
 import axios from "axios"
+// import fetch from 'node-fetch';
 import { timeStamp } from 'console';
 
 const version = '0.2.2';
@@ -274,8 +279,9 @@ async function api_version(req:Request, res:Response) {
   // console.log(os.hostname())
   // console.log(host)
   console.log(req)
-  // api envrinoment
+  // api environment
   // os.hostname()
+ 
 
   return res.status(200).json({
     status: 'success',
@@ -457,7 +463,7 @@ async function urban_status_simple(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
-/// Not in use at the moment
+/// old population density buffer function
 async function population_density_buffer(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.buffer) {
     return res.status(400).json({
@@ -2215,24 +2221,36 @@ async function get_forecast(req: Request, res: Response) {
         key
     );
     const data = await response.data;
-
+    
     const format_time = (s) => new Date(s * 1e3).toISOString().slice(0,-14);
 
-    const list_forecast = data.daily.map(( props ) => {
-      const { weather, dt, temp, humidity, rain, clouds, icon } = props
-      return {
+
+    let list_forecast = data.daily.map(( props ) => {
+      const { weather, dt, temp, humidity, rain, clouds, icon, pop } = props
+      
+      let entry = {
         date: format_time(dt),
         description: weather[0].description,
         // icon: weather[0].icon,
-        temp_min: temp.min, 
-        temp_max: temp.max,
-        humidity,
-        rain,
-        clouds
-
+        temp_min_c: temp.min, 
+        temp_max_c: temp.max,
+        humidity_perc: humidity,
+        rain_mm: rain,
+        clouds_perc: clouds,
+        probability_of_precipitation_perc: pop
+        
       } 
-    }); 
+      if (data.alerts) {
+    entry = {
+      ...entry,
+      alerts: data.alerts[0].event + data.alerts[0].description
+    }
+  } 
 
+      return entry
+    });
+ 
+          
     return res.status(200).json({
       status: "success",
       message: list_forecast,
@@ -2269,14 +2287,12 @@ async function get_api_isochrone(req, res) {
   }
 
   const {profile, lng, lat, minutes} = req.query
-  try {
 
+  try {
 
   const isochrone = await _get_isochrone(profile, lng, lat, minutes)
 
   // console.log(isochrone)
-
-
 
       return res.status(200).json({
       status: "success",
@@ -2384,6 +2400,7 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
   
 }
 
+<<<<<<< HEAD
   async function get_user_layer_metadata(req:Request, res:Response) {
 
     if (!req.query.username) {
@@ -2398,8 +2415,39 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
     
 
     console.log(`fetching layer_metadata for ${username} from database serverside`)
+=======
+async function maxNDVI_monthly(req:Request, res:Response) {
+  
+  const {lng1, lat1, lng2, lat2, from_date, to_date} = req.query
+  console.log(lng1, lat1, lng2, lat2, from_date, to_date)
+  
+  try {
+    const max_ndvi = await maxNDVIMonthly(lat1, lng1, lat2, lng2, from_date, to_date)
 
+    return res.status(200).json({
+      status: 'success',
+      message: max_ndvi,
+      function: 'maxNDVImonthly',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    // return res.status(500).json({
+    //   status: 'failure',
+    //   message: 'Error encountered on server',
+    //   function: 'maxNDVImonthly',
+    // } as ApiResponse);
+  }
+}
+// average NDVI starting from today to back specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+async function avg_NDVI(req:Request, res:Response) {
+  
+  const to_date = new Date().toISOString().split('.')[0]+"Z" 
+>>>>>>> ana_feats
 
+  const get_date = subtractDays(to_date, req.query.number_days)
+  const from_date = get_date.toISOString().split('.')[0]+"Z"
+
+<<<<<<< HEAD
     const dbQuery = 
       `With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
       From user_layers l
@@ -2416,21 +2464,90 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
       GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count
       ;`
     console.log(dbQuery)
+=======
+  // const buffs = [500, 1000]
+  // let buff;
+  // if buffs.indexOf(Number(req.query.buffer)) >= 0 
+
+>>>>>>> ana_feats
   try {
-    const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse)
-    res.status(200).json({
-      status: "success",
-      results: dbResponse.rows,
+    const avg_ndvi = await avgNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, Number(req.query.buffer))
+    // console.log(avg_ndvi.data.interval)
+    // console.log(avg_ndvi.data.outputs.data.bands.B0.stats)
+
+    const list_avgNDVI = avg_ndvi.data.map((props) => {
+      const {interval, outputs} = props
+      return {
+        dates: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
+        min: outputs.data.bands.B0.stats.min,
+        max: outputs.data.bands.B0.stats.max,
+        mean: outputs.data.bands.B0.stats.mean,
+        stDev: outputs.data.bands.B0.stats.stDev,
+      }
+      
     });
+
+    return res.status(200).json({
+      status: 'success',
+      message: list_avgNDVI,
+      function: 'avgNDVI',
+    } as ApiResponse);
   } catch (err) {
-    return res.status(500).json({
+    console.log(err);
+    // return res.status(500).json({
+    //   status: 'failure',
+    //   message: 'Error encountered on server',
+    //   function: 'maxNDVImonthly',
+    // } as ApiResponse);
+  }
+}
+
+async function get_user_layer_metadata(req:Request, res:Response) {
+
+  if (!req.query.user) {
+    return res.status(400).json({
       status: 'failure',
-      message: 'Error encountered on server',
+      message: 'Request missing username',
       function: 'get_user_layer_metadata',
     } as ApiResponse);
   }
-  }
+  const { user } = req.query
+  
+  
+
+  console.log(`fetching layer_metadata for ${user} from database serverside`)
+
+
+  const dbQuery = 
+    `With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
+    From user_geometries g
+    LEFT JOIN user_layers l ON g.layer_id = l.layer_id
+    GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)
+    
+    
+    
+    SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
+    FROM selection s
+    LEFT JOIN users u ON s.user_id = u.id
+    WHERE username = '${user}'
+    GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count
+    ;`
+
+try {
+  const dbResponse = await pool.query(dbQuery);
+  console.log(dbResponse)
+  res.status(200).json({
+    status: "success",
+    results: dbResponse.rows,
+  });
+} catch (err) {
+  return res.status(500).json({
+    status: 'failure',
+    message: 'Error encountered on server',
+    function: 'get_user_layer_metadata',
+  } as ApiResponse);
+}
+}
 ;
 
 async function create_layer(req:Request, res:Response) {
@@ -2453,7 +2570,11 @@ async function create_layer(req:Request, res:Response) {
     return res.status(200).json({
       status: "success",
       message: dbResponse.rows,
+<<<<<<< HEAD
       function: "create_layer",
+=======
+      function: "create_new_layer",
+>>>>>>> ana_feats
     } as ApiResponse);
   }
   catch (err) {
@@ -2657,6 +2778,9 @@ router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
+//agriculture functions
+router.route('/maxNDVI_monthly').get(auth, maxNDVI_monthly);
+router.route('/avg_NDVI').get(auth, avg_NDVI);
 
 // finished
 router.route('/get_user_layer_metadata').get(get_user_layer_metadata)
