@@ -2501,25 +2501,44 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
         });
     });
 }
-function get_user_layer_metadata(req, res) {
+function maxNDVI_monthly(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var username, get_date, from_date, dbQuery, avg_ndvi, list_avgNDVI, err_44;
+        var _a, lng1, lat1, lng2, lat2, from_date, to_date, max_ndvi, err_44;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    _a = req.query, lng1 = _a.lng1, lat1 = _a.lat1, lng2 = _a.lng2, lat2 = _a.lat2, from_date = _a.from_date, to_date = _a.to_date;
+                    console.log(lng1, lat1, lng2, lat2, from_date, to_date);
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVIMonthly)(lat1, lng1, lat2, lng2, from_date, to_date)];
+                case 2:
+                    max_ndvi = _b.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: 'success',
+                            message: max_ndvi,
+                            "function": 'maxNDVImonthly'
+                        })];
+                case 3:
+                    err_44 = _b.sent();
+                    console.log(err_44);
+                    return [3 /*break*/, 4];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+// average NDVI starting from today to back specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+function avg_NDVI(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var to_date, get_date, from_date, avg_ndvi, list_avgNDVI, err_45;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.username) {
-                        return [2 /*return*/, res.status(400).json({
-                                status: 'failure',
-                                message: 'Request missing username',
-                                "function": 'get_user_layer_metadata'
-                            })];
-                    }
-                    username = req.query.username;
-                    console.log("fetching layer_metadata for " + username + " from database serverside");
+                    to_date = new Date().toISOString().split('.')[0] + "Z";
                     get_date = (0, utils_1.subtractDays)(to_date, req.query.number_days);
                     from_date = get_date.toISOString().split('.')[0] + "Z";
-                    dbQuery = "With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n      From user_layers l\n      LEFT JOIN user_geometries g ON l.layer_id = g.layer_id\n      GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)\n      \n      \n      \n      \n      SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n      FROM selection s\n      LEFT JOIN users u ON s.username = u.username\n      WHERE s.username = '" + username + "'\n      GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count\n      ;";
-                    console.log(dbQuery);
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2545,8 +2564,8 @@ function get_user_layer_metadata(req, res) {
                             "function": 'avgNDVI'
                         })];
                 case 3:
-                    err_44 = _a.sent();
-                    console.log(err_44);
+                    err_45 = _a.sent();
+                    console.log(err_45);
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -2555,7 +2574,7 @@ function get_user_layer_metadata(req, res) {
 }
 function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user, dbQuery, dbResponse, err_45;
+        var user, dbQuery, dbResponse, err_46;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2582,7 +2601,7 @@ function get_user_layer_metadata(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_45 = _a.sent();
+                    err_46 = _a.sent();
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2596,7 +2615,7 @@ function get_user_layer_metadata(req, res) {
 ;
 function create_layer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layername, dbQuery, dbResponse, err_46;
+        var _a, username, layername, dbQuery, dbResponse, err_47;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2620,11 +2639,11 @@ function create_layer(req, res) {
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
                             message: dbResponse.rows,
-                            "function": "create_layer"
+                            "function": "create_new_layer"
                         })];
                 case 3:
-                    err_46 = _b.sent();
-                    console.log(err_46);
+                    err_47 = _b.sent();
+                    console.log(err_47);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2638,10 +2657,14 @@ function create_layer(req, res) {
 function delete_layer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
 <<<<<<< HEAD
+<<<<<<< HEAD
         var layerId, dbQuery, dbResponse, err_46;
 =======
         var layer_id, dbQuery, dbResponse, err_47;
 >>>>>>> 34d1329245f9db89636726ae189fc3871678142a
+=======
+        var layer_id, dbQuery, dbResponse, err_48;
+>>>>>>> d38d7f925e34ad0b0c34f2519e0bfabbfef8ec97
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2665,8 +2688,8 @@ function delete_layer(req, res) {
                             message: "layer deleted"
                         })];
                 case 3:
-                    err_47 = _a.sent();
-                    console.log(err_47);
+                    err_48 = _a.sent();
+                    console.log(err_48);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2679,7 +2702,7 @@ function delete_layer(req, res) {
 }
 function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_48;
+        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_49;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2715,8 +2738,8 @@ function get_layer_geoms(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_48 = _b.sent();
-                    console.log(err_48);
+                    err_49 = _b.sent();
+                    console.log(err_49);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2729,7 +2752,7 @@ function get_layer_geoms(req, res) {
 }
 function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_49;
+        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_50;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2766,8 +2789,8 @@ function update_layer_data(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_49 = _b.sent();
-                    console.log(err_49);
+                    err_50 = _b.sent();
+                    console.log(err_50);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',

@@ -2534,11 +2534,7 @@ async function create_layer(req:Request, res:Response) {
     return res.status(200).json({
       status: "success",
       message: dbResponse.rows,
-<<<<<<< HEAD
       function: "create_layer",
-=======
-      function: "create_new_layer",
->>>>>>> ana_feats
     } as ApiResponse);
   }
   catch (err) {
