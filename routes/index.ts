@@ -2467,24 +2467,25 @@ async function create_layer(req:Request, res:Response) {
 }
 
 async function delete_layer(req:Request, res:Response) {
-  if (!req.query.layer_id) {
+  if (!req.query.layerId) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing username',
+      message: 'Request missing layerId',
       function: 'delete_layer',
     } as ApiResponse);
   }
   
-  const { layer_id } = req.query
+  const { layerId } = req.query
 
   const dbQuery = `
     DELETE
     FROM user_layers
-    WHERE layer_id=${layer_id}`
+    WHERE layer_id=${layerId}`
     try {
       const dbResponse = await pool.query(dbQuery);
       return res.status(200).json({
         status: "success",
+        results: dbResponse.rows,
         message: "layer deleted"
     });
     } catch (err) {

@@ -2569,19 +2569,19 @@ function create_layer(req, res) {
 }
 function delete_layer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var layer_id, dbQuery, dbResponse, err_46;
+        var layerId, dbQuery, dbResponse, err_46;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.layer_id) {
+                    if (!req.query.layerId) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing username',
+                                message: 'Request missing layerId',
                                 "function": 'delete_layer'
                             })];
                     }
-                    layer_id = req.query.layer_id;
-                    dbQuery = "\n    DELETE\n    FROM user_layers\n    WHERE layer_id=" + layer_id;
+                    layerId = req.query.layerId;
+                    dbQuery = "\n    DELETE\n    FROM user_layers\n    WHERE layer_id=" + layerId;
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
