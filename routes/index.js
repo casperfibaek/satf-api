@@ -2326,7 +2326,8 @@ function get_forecast(req, res) {
                             humidity_perc: humidity,
                             rain_mm: rain,
                             clouds_perc: clouds,
-                            probability_of_precipitation_perc: pop
+                            probability_of_precipitation_perc: pop,
+                            alerts: 'no alerts'
                         };
                         if (data_1.alerts) {
                             entry = __assign(__assign({}, entry), { alerts: data_1.alerts[0].event + data_1.alerts[0].description });

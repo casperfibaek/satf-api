@@ -2237,13 +2237,13 @@ async function get_forecast(req: Request, res: Response) {
         humidity_perc: humidity,
         rain_mm: rain,
         clouds_perc: clouds,
-        probability_of_precipitation_perc: pop
-        
+        probability_of_precipitation_perc: pop,
+        alerts: 'no alerts'
       } 
       if (data.alerts) {
-    entry = {
-      ...entry,
-      alerts: data.alerts[0].event + data.alerts[0].description
+      entry = {
+        ...entry,
+        alerts: data.alerts[0].event + data.alerts[0].description
     }
   } 
 
