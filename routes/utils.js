@@ -3,7 +3,7 @@
   Utility functions
 */
 exports.__esModule = true;
-exports.generateGeojson = exports.generatePoint = exports.translateUrbanClasses = void 0;
+exports.subtractDays = exports.generateGeojson = exports.generatePoint = exports.translateUrbanClasses = void 0;
 function translateUrbanClasses(klass) {
     if (Number.isNaN(klass)) {
         return 'Unknown';
@@ -52,3 +52,10 @@ function generateGeojson(geometryArray, propertiesArray) {
     return collection;
 }
 exports.generateGeojson = generateGeojson;
+// subtract days to designated date
+function subtractDays(date, days) {
+    var result = new Date(date);
+    result.setDate(result.getDate() - days);
+    return result;
+}
+exports.subtractDays = subtractDays;
