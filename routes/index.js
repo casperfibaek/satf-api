@@ -2587,8 +2587,10 @@ function get_user_layer_metadata(req, res) {
                             })];
                     }
                     username = req.query.username;
+                    console.log(username);
                     console.log("fetching layer_metadata for " + username + " from database serverside");
-                    dbQuery = "With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n    From user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id = l.layer_id\n    GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)\n    \n    \n    \n    SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n    FROM selection s\n    LEFT JOIN users u ON s.user_id = u.id\n    WHERE username = '" + username + "'\n    GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count\n    ;";
+                    dbQuery = "With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n    From user_layers l\n    LEFT JOIN user_geometries g ON l.layer_id = g.layer_id\n    GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)\n    SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n    FROM selection s\n    LEFT JOIN users u ON s.username = u.username\n    WHERE s.username = '" + username + "'\n    GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count";
+                    console.log(dbQuery);
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
