@@ -2575,20 +2575,20 @@ function avg_NDVI(req, res) {
 }
 function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user, dbQuery, dbResponse, err_46;
+        var username, dbQuery, dbResponse, err_46;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.user) {
+                    if (!req.query.username) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Request missing username',
                                 "function": 'get_user_layer_metadata'
                             })];
                     }
-                    user = req.query.user;
-                    console.log("fetching layer_metadata for " + user + " from database serverside");
-                    dbQuery = "With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n    From user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id = l.layer_id\n    GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)\n    \n    \n    \n    SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n    FROM selection s\n    LEFT JOIN users u ON s.user_id = u.id\n    WHERE username = '" + user + "'\n    GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count\n    ;";
+                    username = req.query.username;
+                    console.log("fetching layer_metadata for " + username + " from database serverside");
+                    dbQuery = "With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n    From user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id = l.layer_id\n    GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)\n    \n    \n    \n    SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n    FROM selection s\n    LEFT JOIN users u ON s.user_id = u.id\n    WHERE username = '" + username + "'\n    GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count\n    ;";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);

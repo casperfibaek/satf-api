@@ -2475,7 +2475,7 @@ async function get_user_layer_metadata(req:Request, res:Response) {
       function: 'get_user_layer_metadata',
     } as ApiResponse);
   }
-  const { user } = req.query
+  const { username } = req.query
   
   
 
