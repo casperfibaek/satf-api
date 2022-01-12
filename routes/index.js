@@ -993,30 +993,35 @@ function pop_density_isochrone_car(req, res) {
 }
 function nightlights(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_15;
+        var profile, response, isochrone, dbQuery, dbResponse, err_15;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+                    if (!req.query.lat || !req.query.lng || !req.query.minutes) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing lat, lng or buffer',
+                                message: 'Request missing lat, lng or minutes',
                                 "function": 'nightlights'
                             })];
                     }
-                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
                                 "function": 'nightlights'
                             })];
                     }
-                    dbQuery = "\n    SELECT avg_timeseries_viirs('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.buffer) + "') as nightlight;\n  ";
-                    _a.label = 1;
+                    profile = "walking";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    isochrone = JSON.stringify(response);
+                    dbQuery = "\n    SELECT avg_timeseries_viirs_isochrone('" + isochrone + "') as nightlight;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
@@ -1030,7 +1035,7 @@ function nightlights(req, res) {
                             message: 'Error encountered on server',
                             "function": 'nightlights'
                         })];
-                case 3:
+                case 4:
                     err_15 = _a.sent();
                     console.log(err_15);
                     return [2 /*return*/, res.status(500).json({
@@ -1038,37 +1043,42 @@ function nightlights(req, res) {
                             message: 'Error encountered on server',
                             "function": 'nightlights'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
 }
 function demography(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_16;
+        var profile, response, isochrone, dbQuery, dbResponse, err_16;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+                    if (!req.query.lat || !req.query.lng || !req.query.minutes) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing lat, lng or buffer',
+                                message: 'Request missing lat, lng or minutes',
                                 "function": 'demography'
                             })];
                     }
-                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
                                 "function": 'demography'
                             })];
                     }
-                    dbQuery = "\n    SELECT demography('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.buffer) + "') as demography;\n  ";
-                    _a.label = 1;
+                    profile = "walking";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    isochrone = JSON.stringify(response);
+                    dbQuery = "\n    SELECT demography_isochrone('" + isochrone + "') as demography;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
@@ -1082,7 +1092,7 @@ function demography(req, res) {
                             message: 'Error encountered on server',
                             "function": 'demography'
                         })];
-                case 3:
+                case 4:
                     err_16 = _a.sent();
                     console.log(err_16);
                     return [2 /*return*/, res.status(500).json({
@@ -1090,7 +1100,7 @@ function demography(req, res) {
                             message: 'Error encountered on server',
                             "function": 'demography'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
@@ -2504,16 +2514,16 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
 }
 function maxNDVI_monthly(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, lng1, lat1, lng2, lat2, from_date, to_date, max_ndvi, err_44;
+        var _a, lng, lat, from_date, to_date, buffer, max_ndvi, err_44;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
-                    _a = req.query, lng1 = _a.lng1, lat1 = _a.lat1, lng2 = _a.lng2, lat2 = _a.lat2, from_date = _a.from_date, to_date = _a.to_date;
-                    console.log(lng1, lat1, lng2, lat2, from_date, to_date);
+                    _a = req.query, lng = _a.lng, lat = _a.lat, from_date = _a.from_date, to_date = _a.to_date, buffer = _a.buffer;
+                    console.log(lng, lat, from_date, to_date, buffer);
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVIMonthly)(lat1, lng1, lat2, lng2, from_date, to_date)];
+                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVIMonthly)(Number(lat), Number(lng), from_date, to_date, Number(buffer))];
                 case 2:
                     max_ndvi = _b.sent();
                     return [2 /*return*/, res.status(200).json({
@@ -2530,7 +2540,7 @@ function maxNDVI_monthly(req, res) {
         });
     });
 }
-// average NDVI starting from today to back specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+// average NDVI starting from now back to specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
 function avg_NDVI(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var to_date, get_date, from_date, avg_ndvi, list_avgNDVI, err_45;

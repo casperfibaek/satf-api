@@ -999,23 +999,28 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
 }
 
 async function nightlights(req:Request, res:Response) {
-  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+  if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing lat, lng or buffer',
+      message: 'Request missing lat, lng or minutes',
       function: 'nightlights',
     } as ApiResponse);
   }
 
-  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
       function: 'nightlights',
     } as ApiResponse);
   }
+  const profile = "walking"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+ 
+  const isochrone = JSON.stringify(response) 
+ 
   const dbQuery = `
-    SELECT avg_timeseries_viirs('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as nightlight;
+    SELECT avg_timeseries_viirs_isochrone('${isochrone}') as nightlight;
   `;
 
   try {
@@ -1043,27 +1048,34 @@ async function nightlights(req:Request, res:Response) {
 }
 
 async function demography(req:Request, res:Response) {
-  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+  if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing lat, lng or buffer',
+      message: 'Request missing lat, lng or minutes',
       function: 'demography',
     } as ApiResponse);
   }
 
-  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
       function: 'demography',
     } as ApiResponse);
   }
+
+  const profile = "walking"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+ 
+  const isochrone = JSON.stringify(response) 
+  
   const dbQuery = `
-    SELECT demography('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as demography;
+    SELECT demography_isochrone('${isochrone}') as demography;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
+  
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -2402,11 +2414,11 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
 
 async function maxNDVI_monthly(req:Request, res:Response) {
   
-  const {lng1, lat1, lng2, lat2, from_date, to_date} = req.query
-  console.log(lng1, lat1, lng2, lat2, from_date, to_date)
+  const {lng, lat, from_date, to_date, buffer} = req.query
+  console.log(lng, lat, from_date, to_date, buffer)
   
   try {
-    const max_ndvi = await maxNDVIMonthly(lat1, lng1, lat2, lng2, from_date, to_date)
+    const max_ndvi = await maxNDVIMonthly(Number(lat), Number(lng), from_date, to_date, Number(buffer))
 
     return res.status(200).json({
       status: 'success',
@@ -2422,7 +2434,7 @@ async function maxNDVI_monthly(req:Request, res:Response) {
     // } as ApiResponse);
   }
 }
-// average NDVI starting from today to back specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+// average NDVI starting from now back to specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
 async function avg_NDVI(req:Request, res:Response) {
   
   const to_date = new Date().toISOString().split('.')[0]+"Z" 
