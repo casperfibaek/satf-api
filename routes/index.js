@@ -2512,23 +2512,54 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
         });
     });
 }
+//max NDVI during a period of 30 days, choosing year and month (to be changed to start month and end month), on a buffered area (100, 500, 1000)
 function maxNDVI_monthly(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, lng, lat, from_date, to_date, buffer, max_ndvi, err_44;
+        var _a, lng, lat, start_month, end_month, year, buffer, startString, endString, from_date, to_date, buff, maxNDVI, list_maxNDVI, err_44;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
-                    _a = req.query, lng = _a.lng, lat = _a.lat, from_date = _a.from_date, to_date = _a.to_date, buffer = _a.buffer;
-                    console.log(lng, lat, from_date, to_date, buffer);
+                    _a = req.query, lng = _a.lng, lat = _a.lat, start_month = _a.start_month, end_month = _a.end_month, year = _a.year, buffer = _a.buffer;
+                    console.log(lng, lat, start_month, end_month, year, buffer);
+                    startString = new Date(Number(year), Number(start_month) - 1, 1, 15, 0, 0, 0);
+                    endString = new Date(Number(year), Number(end_month), 0, 15, 0, 0, 0);
+                    from_date = startString.toISOString().split('T')[0];
+                    to_date = endString.toISOString().split('T')[0];
+                    if (req.query.buffer) {
+                        buff = Number(req.query.buffer);
+                    }
+                    else {
+                        buff = 100;
+                    }
+                    if (!(buff === 100 ||
+                        buff === 500 ||
+                        buff === 1000)) {
+                        return [2 /*return*/, (res.status(400).json({
+                                status: 'failure',
+                                message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+                                "function": 'maxNDVImonthly'
+                            }))];
+                    }
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVIMonthly)(Number(lat), Number(lng), from_date, to_date, Number(buffer))];
+                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVIMonthly)(Number(lat), Number(lng), from_date, to_date, buff)];
                 case 2:
-                    max_ndvi = _b.sent();
+                    maxNDVI = _b.sent();
+                    console.log(maxNDVI.data[0].interval);
+                    list_maxNDVI = maxNDVI.data.map(function (props) {
+                        var interval = props.interval, outputs = props.outputs;
+                        return {
+                            date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                            min: outputs.data.bands.monthly_max_ndvi.stats.min,
+                            max: outputs.data.bands.monthly_max_ndvi.stats.max,
+                            mean: outputs.data.bands.monthly_max_ndvi.stats.mean,
+                            stDev: outputs.data.bands.monthly_max_ndvi.stats.stDev
+                        };
+                    });
                     return [2 /*return*/, res.status(200).json({
                             status: 'success',
-                            message: max_ndvi,
+                            message: list_maxNDVI,
                             "function": 'maxNDVImonthly'
                         })];
                 case 3:
@@ -2543,32 +2574,51 @@ function maxNDVI_monthly(req, res) {
 // average NDVI starting from now back to specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
 function avg_NDVI(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var to_date, get_date, from_date, avg_ndvi, list_avgNDVI, err_45;
+        var to_date, get_date, from_date, buff, avg_ndvi, list_avgNDVI, err_45;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     to_date = new Date().toISOString().split('.')[0] + "Z";
                     get_date = (0, utils_1.subtractDays)(to_date, req.query.number_days);
                     from_date = get_date.toISOString().split('.')[0] + "Z";
+                    if (req.query.buffer) {
+                        buff = Number(req.query.buffer);
+                    }
+                    else {
+                        buff = 100;
+                    }
+                    if (!(buff === 100 ||
+                        buff === 500 ||
+                        buff === 1000)) {
+                        return [2 /*return*/, (res.status(400).json({
+                                status: 'failure',
+                                message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+                                "function": 'avgNDVI'
+                            }))];
+                    }
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, (0, sentinelhub_1.avgNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, Number(req.query.buffer))
-                        // console.log(avg_ndvi.data.interval)
-                        // console.log(avg_ndvi.data.outputs.data.bands.B0.stats)
-                    ];
+                    return [4 /*yield*/, (0, sentinelhub_1.avgNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)];
                 case 2:
                     avg_ndvi = _a.sent();
                     list_avgNDVI = avg_ndvi.data.map(function (props) {
                         var interval = props.interval, outputs = props.outputs;
                         return {
-                            dates: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                            date: interval.from.split('T')[0],
                             min: outputs.data.bands.B0.stats.min,
                             max: outputs.data.bands.B0.stats.max,
                             mean: outputs.data.bands.B0.stats.mean,
                             stDev: outputs.data.bands.B0.stats.stDev
                         };
                     });
+                    if (list_avgNDVI.length < 1) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'No data to display, data available minimum 5 days',
+                                "function": 'avgNDVI'
+                            })];
+                    }
                     return [2 /*return*/, res.status(200).json({
                             status: 'success',
                             message: list_avgNDVI,

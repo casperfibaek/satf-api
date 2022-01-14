@@ -19,7 +19,7 @@ async function requestAuthToken(Id, Secret) {
     )}&client_secret=${encodeURIComponent(Secret)}`,
   });
   const access_token = await response.data.access_token
-  
+  // console.log(access_token)
   return access_token
 
   } catch (err) {
@@ -30,30 +30,18 @@ async function requestAuthToken(Id, Secret) {
 const client_id = "9671cc49-79be-46b2-9746-566f5db1304e"
 const client_secret = "J+HmLAh:XkANGXF<:L|cnUcHgOT3J0:/QO{3.aWV"
 
-//get max NDVI between two defined dates, and a bounding box)
-export async function maxNDVIMonthly(lng, lat, from_date, to_date, userbuffer=100) { 
+//get max NDVI for every 30 days and year, and a bounding box)
+export async function maxNDVIMonthly(lng, lat, from_date, to_date, buff) { 
     const coords = point([lng, lat])
 
-    let buff;
-    
-    if (userbuffer === 100 ||
-        userbuffer === 500 ||
-        userbuffer === 1000) {
-          buff = (buffer(coords, userbuffer/1000, {units: 'kilometers'}))    
-      }
-    else {
-       return 'ValueError: buffer is not valid, choose between 100, 500 and 1000 meters '
-    }
-
+    buff = (buffer(coords, buff/1000, {units: 'kilometers'}))
     const geometry = bbox(buff)
 
     console.log("bbox:"+geometry)
-    console.log("to_date:"+to_date)
-    console.log("from_date:"+from_date)
+    console.log("to_date:"+from_date)
+    console.log("from_date:"+to_date)
 
-    // const bbox = [lng1, lat1, lng2, lat2]
     const token = await requestAuthToken(client_id, client_secret)
-    // console.log(token)
 
     const response = await fetch("https://services.sentinel-hub.com/api/v1/statistics", {
     method: "POST",
@@ -138,20 +126,11 @@ function setup() {
 
 //function getting NDVI (avg?) for last x days (x-days to now), on a buffered point (between 100m, 500m and 1000m)
 
-export async function avgNDVI(lat, lng, to_date, from_date, userbuffer = 100) { 
+export async function avgNDVI(lat, lng, to_date, from_date, buff) { 
 
     const coords = point([lng, lat])
 
-    let buff;
-    
-    if (userbuffer === 100 ||
-        userbuffer === 500 ||
-        userbuffer === 1000) {
-          buff = (buffer(coords, userbuffer/1000, {units: 'kilometers'}))    
-      }
-    else {
-       throw 'ValueError: buffer is not valid, choose between 100, 500 and 1000 meters '
-    }
+    buff = (buffer(coords, buff/1000, {units: 'kilometers'})) 
 
     const geometry = bbox(buff)
 
@@ -187,7 +166,7 @@ export async function avgNDVI(lat, lng, to_date, from_date, userbuffer = 100) {
       "to":to_date
     },
     "aggregationInterval": {
-      "of": "P5D",
+      "of": "P1D",
       "lastIntervalBehavior": "SHORTEN"
     },
     "evalscript": `
