@@ -2519,6 +2519,20 @@ function maxNDVI_monthly(req, res) {
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "maxNDVI_monthly"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "maxNDVI_monthly"
+                            })];
+                    }
                     _a = req.query, lng = _a.lng, lat = _a.lat, start_month = _a.start_month, end_month = _a.end_month, year = _a.year, buffer = _a.buffer;
                     console.log(lng, lat, start_month, end_month, year, buffer);
                     startString = new Date(Number(year), Number(start_month) - 1, 1, 15, 0, 0, 0);
@@ -2531,9 +2545,7 @@ function maxNDVI_monthly(req, res) {
                     else {
                         buff = 100;
                     }
-                    if (!(buff === 100 ||
-                        buff === 500 ||
-                        buff === 1000)) {
+                    if (!(buff === 100 || buff === 500 || buff === 1000)) {
                         return [2 /*return*/, (res.status(400).json({
                                 status: 'failure',
                                 message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
@@ -2565,7 +2577,11 @@ function maxNDVI_monthly(req, res) {
                 case 3:
                     err_44 = _b.sent();
                     console.log(err_44);
-                    return [3 /*break*/, 4];
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'maxNDVImonthly'
+                        })];
                 case 4: return [2 /*return*/];
             }
         });
@@ -2578,6 +2594,20 @@ function avg_NDVI(req, res) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "avg_NDVI"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "avg_NDVI"
+                            })];
+                    }
                     to_date = new Date().toISOString().split('.')[0] + "Z";
                     get_date = (0, utils_1.subtractDays)(to_date, req.query.number_days);
                     from_date = get_date.toISOString().split('.')[0] + "Z";
@@ -2587,9 +2617,7 @@ function avg_NDVI(req, res) {
                     else {
                         buff = 100;
                     }
-                    if (!(buff === 100 ||
-                        buff === 500 ||
-                        buff === 1000)) {
+                    if (!(buff === 100 || buff === 500 || buff === 1000)) {
                         return [2 /*return*/, (res.status(400).json({
                                 status: 'failure',
                                 message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
@@ -2627,7 +2655,11 @@ function avg_NDVI(req, res) {
                 case 3:
                     err_45 = _a.sent();
                     console.log(err_45);
-                    return [3 /*break*/, 4];
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'avgNDVI'
+                        })];
                 case 4: return [2 /*return*/];
             }
         });

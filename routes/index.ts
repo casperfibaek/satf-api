@@ -2413,7 +2413,20 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
 }
 //max NDVI during a period of 30 days, choosing year and month (to be changed to start month and end month), on a buffered area (100, 500, 1000)
 async function maxNDVI_monthly(req:Request, res:Response) {
-  
+     if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "maxNDVI_monthly",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "maxNDVI_monthly",
+    } as ApiResponse);
+  }
   const {lng, lat, start_month, end_month, year, buffer} = req.query
   console.log(lng, lat, start_month, end_month, year, buffer)
 
@@ -2430,9 +2443,7 @@ async function maxNDVI_monthly(req:Request, res:Response) {
     buff = 100
   }
 
-  if (!(buff === 100 ||
-      buff === 500 ||
-      buff === 1000)) {
+  if (!(buff === 100 || buff === 500 || buff === 1000)) {
       return (
         res.status(400).json({
           status: 'failure',
@@ -2456,7 +2467,6 @@ async function maxNDVI_monthly(req:Request, res:Response) {
         }
     
       });
-
     return res.status(200).json({
       status: 'success',
       message: list_maxNDVI,
@@ -2464,16 +2474,32 @@ async function maxNDVI_monthly(req:Request, res:Response) {
     } as ApiResponse);
   } catch (err) {
     console.log(err);
-    // return res.status(500).json({
-    //   status: 'failure',
-    //   message: 'Error encountered on server',
-    //   function: 'maxNDVImonthly',
-    // } as ApiResponse);
+
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'maxNDVImonthly',
+    } as ApiResponse);
   }
 }
+
+
 // average NDVI starting from now back to specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
 async function avg_NDVI(req:Request, res:Response) {
-  
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "avg_NDVI",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "avg_NDVI",
+    } as ApiResponse);
+  }
   const to_date = new Date().toISOString().split('.')[0]+"Z" 
 
   const get_date = subtractDays(to_date, req.query.number_days)
@@ -2486,18 +2512,13 @@ async function avg_NDVI(req:Request, res:Response) {
     buff = 100
   }
 
-  if (!(buff === 100 ||
-        buff === 500 ||
-        buff === 1000)) {
-        return (
-          res.status(400).json({
+  if (!(buff === 100 || buff === 500 || buff === 1000)) {
+    return (res.status(400).json({
       status: 'failure',
       message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
       function: 'avgNDVI',
-    })
-        )
-    }
-    
+    }))
+  }
 
   try {
     const avg_ndvi = await avgNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
@@ -2529,11 +2550,12 @@ async function avg_NDVI(req:Request, res:Response) {
     } as ApiResponse);
   } catch (err) {
     console.log(err);
-    // return res.status(500).json({
-    //   status: 'failure',
-    //   message: 'Error encountered on server',
-    //   function: 'maxNDVImonthly',
-    // } as ApiResponse);
+
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'avgNDVI',
+    } as ApiResponse);
   }
 }
 

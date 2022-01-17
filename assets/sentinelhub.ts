@@ -69,10 +69,8 @@ export async function maxNDVIMonthly(lng, lat, from_date, to_date, buff) {
       "to": to_date + "T23:59:59Z"
     },
     "aggregationInterval": {
-      "of": "P30D"
+      "of": "P29D"
     },
-    "width": 512,
-    "height": 343.697,
     "evalscript": `
    //VERSION=3
 function setup() {
