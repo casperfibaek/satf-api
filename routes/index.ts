@@ -2255,7 +2255,7 @@ async function get_forecast(req: Request, res: Response) {
       if (data.alerts) {
       entry = {
         ...entry,
-        alerts: data.alerts[0].event + data.alerts[0].description
+        alerts: data.alerts[0].event + '; ' + data.alerts[0].description
     }
   } 
 

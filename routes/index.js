@@ -2340,7 +2340,7 @@ function get_forecast(req, res) {
                             alerts: 'no alerts'
                         };
                         if (data_1.alerts) {
-                            entry = __assign(__assign({}, entry), { alerts: data_1.alerts[0].event + data_1.alerts[0].description });
+                            entry = __assign(__assign({}, entry), { alerts: data_1.alerts[0].event + '; ' + data_1.alerts[0].description });
                         }
                         return entry;
                     });
