@@ -69,8 +69,11 @@ export async function maxNDVIMonthly(lng, lat, from_date, to_date, buff) {
       "to": to_date + "T23:59:59Z"
     },
     "aggregationInterval": {
-      "of": "P29D"
+      "of": "P30D",
+      "lastIntervalBehavior": "SHORTEN"
     },
+    "resx": 10,
+    "resy": 10,
     "evalscript": `
    //VERSION=3
 function setup() {
@@ -121,6 +124,146 @@ function setup() {
     
 
 }
+//function getting NDVI monthly (30 days aggregate period), on a buffered point (between 100m, 500m and 1000m)
+
+export async function monthlyNDVI(lat, lng, from_date, to_date, buff) { 
+
+    const coords = point([lng, lat])
+
+    buff = (buffer(coords, buff/1000, {units: 'kilometers'})) 
+
+    const geometry = bbox(buff)
+
+    console.log("bbox:"+geometry)
+    console.log("to_date:"+to_date)
+    console.log("from_date:"+from_date)
+
+    const token = await requestAuthToken(client_id, client_secret)
+
+    const response = await fetch("https://services.sentinel-hub.com/api/v1/statistics", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + String(token)
+    },
+    body: JSON.stringify({ 
+    "input": {
+    "bounds": {
+      "bbox": geometry
+    },
+    "data": [
+      {
+        "dataFilter": {
+          "mosaickingOrder": "leastCC"
+        },
+        "type": "sentinel-2-l2a"
+      }
+    ]
+  },
+  "aggregation": {
+    "timeRange": {
+      "from": from_date +"T00:00:00Z",
+      "to":to_date + "T23:59:59Z"
+    },
+    "aggregationInterval": {
+      "of": "P30D",
+      "lastIntervalBehavior": "SHORTEN"
+    },
+    "evalscript": `
+   //VERSION=3
+
+function setup() {
+  return {
+    input: [{
+      bands: [
+        "B04",
+        "B08",
+        "SCL",
+        "dataMask"
+      ]
+    }],
+    output: [
+      {
+        id: "data",
+        bands: 1
+      },
+      {
+        id: "dataMask",
+        bands: 1
+      }]
+  }
+}
+
+function validate (samples) {
+  var scl = samples.SCL;
+
+  if (scl === 1) { // SC_SATURATED_DEFECTIVE
+        return false;
+  } else if (scl === 3) { // SC_CLOUD_SHADOW
+        return false;
+  } else if (scl === 8) { // SC_CLOUD_MEDIUM_PROBA
+        return false;
+  } else if (scl === 9) { // SC_CLOUD_HIGH_PROBA
+        return false;
+  } else if (scl === 10) { // SC_THIN_CIRRUS
+        return false;
+  } else if (scl === 11) { // SC_SNOW_ICE
+    return false;
+  }  else {
+  return true;
+  }
+}
+
+function evaluatePixel(samples) {
+    let ndvi = (samples.B08 - samples.B04)/(samples.B08 + samples.B04)
+    
+    var validNDVIMask = 1
+    if (samples.B08 + samples.B04 == 0 ){
+        validNDVIMask = 0
+    }
+    
+    var noWaterMask = 1
+    if (samples.SCL == 6 ){
+        noWaterMask = 0
+    }
+
+    // var cloudMask = 1
+    // if (samples.SCL == 8) { 
+    //   cloudMask = 0 
+    // } else if (samples.SCL == 9) { 
+    //   cloudMask = 0
+    // } else if (samples.SCL == 10) { 
+    //   cloudMask = 0
+    // } else if (samples.SCL == 11) { 
+    //   cloudMask = 0
+    // }
+
+    var isValid = validate(samples);
+
+    if (isValid) {
+      return {
+        data: [ndvi],
+        // Exclude nodata pixels, pixels where ndvi is not defined and water pixels from statistics:
+        dataMask: [samples.dataMask * validNDVIMask * noWaterMask]
+      }
+    }
+  
+    // return {
+    //     data: [ndvi],
+    //     // Exclude nodata pixels, pixels where ndvi is not defined and water pixels from statistics:
+    //     dataMask: [samples.dataMask * validNDVIMask * noWaterMask * cloudMask]
+    // }
+}
+
+        `
+    }
+})
+}); 
+    
+    return response.json()
+    
+
+}
 
 //function getting NDVI (avg?) for last x days (x-days to now), on a buffered point (between 100m, 500m and 1000m)
 
@@ -164,9 +307,120 @@ export async function avgNDVI(lat, lng, to_date, from_date, buff) {
       "to":to_date
     },
     "aggregationInterval": {
-      "of": "P1D",
-      "lastIntervalBehavior": "SHORTEN"
+      "of": "P1D"
     },
+
+    "evalscript": `
+   //VERSION=3
+
+function setup() {
+  return {
+    input: [{
+      bands: [
+        "B04",
+        "B08",
+        "SCL",
+        "dataMask"
+      ]
+    }],
+    output: [
+      {
+        id: "data",
+        bands: 1
+      },
+      {
+        id: "dataMask",
+        bands: 1
+      }]
+  }
+}
+
+function evaluatePixel(samples) {
+    let ndvi = (samples.B08 - samples.B04)/(samples.B08 + samples.B04)
+    
+    var validNDVIMask = 1
+    if (samples.B08 + samples.B04 == 0 ){
+        validNDVIMask = 0
+    }
+    
+    var noWaterMask = 1
+    if (samples.SCL == 6 ){
+        noWaterMask = 0
+    }
+    
+    // High Probability SCL cloud mask
+    var cloudMask = 1
+    if (samples.SCL == 9) { 
+      cloudMask = 0 
+    // } else if (samples.SCL == 9) { 
+    //   cloudMask = 0
+    // } else if (samples.SCL == 10) { 
+    //   cloudMask = 0
+    // } else if (samples.SCL == 11) { 
+    //   cloudMask = 0
+    }
+  
+    return {
+        data: [ndvi],
+        // Exclude nodata pixels, pixels where ndvi is not defined and water pixels from statistics:
+        dataMask: [samples.dataMask * validNDVIMask * noWaterMask * cloudMask]
+    }
+}
+
+        `
+    }
+})
+}); 
+    
+    return response.json()
+    
+
+}
+
+export async function harvestProbability(lat, lng, to_date, from_date, buff) { 
+
+    const coords = point([lng, lat])
+
+    buff = (buffer(coords, buff/1000, {units: 'kilometers'})) 
+
+    const geometry = bbox(buff)
+
+    console.log("bbox:"+geometry)
+    console.log("to_date:"+to_date)
+    console.log("from_date:"+from_date)
+
+    const token = await requestAuthToken(client_id, client_secret)
+
+    const response = await fetch("https://services.sentinel-hub.com/api/v1/statistics", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + String(token)
+    },
+    body: JSON.stringify({ 
+    "input": {
+    "bounds": {
+      "bbox": geometry
+    },
+    "data": [
+      {
+        "dataFilter": {
+          "mosaickingOrder": "leastCC"
+        },
+        "type": "sentinel-2-l2a"
+      }
+    ]
+  },
+  "aggregation": {
+    "timeRange": {
+      "from": from_date,
+      "to":to_date
+    },
+    "aggregationInterval": {
+      "of": "P5D"
+    },
+    "resx": 10,
+    "resy": 10,
     "evalscript": `
    //VERSION=3
 function setup() {
@@ -220,7 +474,6 @@ function evaluatePixel(samples) {
     
 
 }
-
 
 
 // export async function NDVIImage() { 
