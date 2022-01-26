@@ -5,6 +5,9 @@ import qs from "qs";
 import buffer from '@turf/buffer';
 import { point } from '@turf/helpers';
 import bbox from '@turf/bbox';
+import area from '@turf/area';
+import bboxPolygon from '@turf/bbox-polygon';
+import { toMercator, toWgs84 } from '@turf/projection';
 
 
 async function requestAuthToken(Id, Secret) {
@@ -268,12 +271,19 @@ function evaluatePixel(samples) {
 //function getting NDVI (avg?) for last x days (x-days to now), on a buffered point (between 100m, 500m and 1000m)
 
 export async function avgNDVI(lat, lng, to_date, from_date, buff) { 
-
+    //convert to point
     const coords = point([lng, lat])
-
-    buff = (buffer(coords, buff/1000, {units: 'kilometers'})) 
-
+    //make buffer around point
+    buff = (buffer(coords, buff/2, {units: 'meters'})) //divided by 2 to counter act distortions? Buffer is doubling the bbox size in area
+    //create bounding bux around buffer as aoi for sentinel hub
     const geometry = bbox(buff)
+    //calculate buffer area
+    const areaBuff = area(buff)/1e+6
+    console.log("areaBuff:" + areaBuff)
+    //Make polygon of bounding box to calculate bbox area
+    const poly = bboxPolygon(geometry)
+    const areaBbox = area(poly)/1e+6
+    console.log("areaBbox:" + areaBbox)
 
     console.log("bbox:"+geometry)
     console.log("to_date:"+to_date)
@@ -326,7 +336,7 @@ function setup() {
     output: [
       {
         id: "data",
-        bands: 1
+        bands: 2
       },
       {
         id: "dataMask",
@@ -352,17 +362,19 @@ function evaluatePixel(samples) {
     var cloudMask = 1
     if (samples.SCL == 9) { 
       cloudMask = 0 
-    // } else if (samples.SCL == 9) { 
+    // } else if (samples.SCL == 8) { 
     //   cloudMask = 0
     // } else if (samples.SCL == 10) { 
     //   cloudMask = 0
     // } else if (samples.SCL == 11) { 
     //   cloudMask = 0
     }
+
+
   
     return {
         data: [ndvi],
-        // Exclude nodata pixels, pixels where ndvi is not defined and water pixels from statistics:
+        // Exclude nodata pixels, pixels where ndvi is not defined, water pixels and cloudy pixels from statistics:
         dataMask: [samples.dataMask * validNDVIMask * noWaterMask * cloudMask]
     }
 }
@@ -374,16 +386,24 @@ function evaluatePixel(samples) {
     
     return response.json()
     
-
 }
 
-export async function harvestProbability(lat, lng, to_date, from_date, buff) { 
 
+export async function maxNDVI(lat, lng, to_date, from_date, buff) { 
+
+    //convert to point
     const coords = point([lng, lat])
-
-    buff = (buffer(coords, buff/1000, {units: 'kilometers'})) 
-
+    //make buffer around point
+    buff = (buffer(coords, buff/2, {units: 'meters'})) //divided by 2 to counter act distortions? Buffer is doubling the bbox size in area
+    //create bounding box around buffer as aoi for sentinel hub
     const geometry = bbox(buff)
+    //calculate buffer area
+    const areaBuff = area(buff)/1e+6
+    console.log("areaBuff:" + areaBuff)
+    //Make polygon of bounding box to calculate bbox area
+    const poly = bboxPolygon(geometry)
+    const areaBbox = area(poly)/1e+6
+    console.log("areaBbox:" + areaBbox)
 
     console.log("bbox:"+geometry)
     console.log("to_date:"+to_date)
@@ -417,12 +437,13 @@ export async function harvestProbability(lat, lng, to_date, from_date, buff) {
       "to":to_date
     },
     "aggregationInterval": {
-      "of": "P5D"
+      "of": "P1D",
+      "lastIntervalBehavior": "SHORTEN"
     },
-    "resx": 10,
-    "resy": 10,
     "evalscript": `
    //VERSION=3
+
+
 function setup() {
   return {
     input: [{
@@ -433,6 +454,7 @@ function setup() {
         "dataMask"
       ]
     }],
+    mosaicking: "ORBIT",
     output: [
       {
         id: "data",
@@ -445,23 +467,44 @@ function setup() {
   }
 }
 
+
 function evaluatePixel(samples) {
-    let ndvi = (samples.B08 - samples.B04)/(samples.B08 + samples.B04)
-    
-    var validNDVIMask = 1
-    if (samples.B08 + samples.B04 == 0 ){
-        validNDVIMask = 0
+
+  // High Probability SCL cloud mask
+  // var cloudMask = 1
+  // var scl = sample.SCL;
+  // var clm = sample.CLM;
+
+  // if (clm === 1 || clm === 255) {
+  //       cloudMask = 0;
+  // } else if (scl === 1) { // SC_SATURATED_DEFECTIVE
+  //      cloudMask = 0;
+  // } else if (scl === 3) { // SC_CLOUD_SHADOW
+  //       cloudMask = 0;
+  // } else if (scl === 8) { // SC_CLOUD_MEDIUM_PROBA
+  //       cloudMask = 0;
+  // } else if (scl === 9) { // SC_CLOUD_HIGH_PROBA
+  //       cloudMask = 0;
+  // } else if (scl === 10) { // SC_THIN_CIRRUS
+  //       cloudMask = 0;
+  // } else if (scl === 11) { // SC_SNOW_ICE
+  //   cloudMask = 0;
+  // }
+
+  var max = 0
+  var hasData = 0
+  for (var i=0; i < samples.length; i++) {
+    if (samples[i].dataMask == 1 && samples[i].SCL != 1 && samples[i].SCL != 6 && samples[i].SCL != 8 && samples[i].SCL != 9 && samples[i].B04+samples[i].B08 != 0 ){
+      hasData = 1
+      var ndvi = (samples[i].B08 - samples[i].B04)/(samples[i].B08 + samples[i].B04)
+      max = ndvi > max ? ndvi:max;
+
     }
-    
-    var noWaterMask = 1
-    if (samples.SCL == 6 ){
-        noWaterMask = 0
-    }
+  }   
 
     return {
-        data: [ndvi],
-        // Exclude nodata pixels, pixels where ndvi is not defined and water pixels from statistics:
-        dataMask: [samples.dataMask * validNDVIMask * noWaterMask]
+      data: [max],
+      dataMask: [hasData]
     }
 }
 
@@ -474,92 +517,3 @@ function evaluatePixel(samples) {
     
 
 }
-
-
-// export async function NDVIImage() { 
-//     // const bbox:Number = geometry
-
-//     const response = await fetch("https://services.sentinel-hub.com/api/v1/statistics", {
-//     method: "POST",
-//     headers: {
-//         "Content-Type": "application/json",
-//         "Authorization": "Bearer eyJraWQiOiJzaCIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJjNmE3OTU2OS01NGQyLTRhNGEtOGE3OC1hNTliMGI3OGE2MDYiLCJhdWQiOiIwZjYxZDM4NS01YzhiLTQ0ZjktYTE1NC0yYWRmNTFkNTAxNDEiLCJqdGkiOiJmMTIwMGJjNC00MmMwLTRmNWUtOTBhZC1kMTUwOWJkNWNjMWYiLCJleHAiOjE2Mzg5OTczMDgsIm5hbWUiOiJBbmEgRmVybmFuZGVzIiwiZW1haWwiOiJhZmVyQG5pcmFzLmRrIiwiZ2l2ZW5fbmFtZSI6IkFuYSIsImZhbWlseV9uYW1lIjoiRmVybmFuZGVzIiwic2lkIjoiZGUwNmIxZWUtY2MwNi00YjFmLThmYTQtMDE2MTcyOWIwMWQ2IiwiZGlkIjoxLCJhaWQiOiI0NjZiMTE0Ny01YjliLTQ5ZmMtYmM4ZC1lN2YwMTk5ODdlNjkiLCJkIjp7IjEiOnsicmEiOnsicmFnIjoxfSwidCI6MTEwMDB9fX0.x45fWeUMJRoeb6mvTF19ncfncAGzbVhf8_EQJJANh_ZLEQdyuUvi1AV3tT4mzlh9g3x2S7pdBipkjHO6ksgaUOB3Kt16Sm4FJDDBa5qpzAgqWo4UBtVhjifMPsq-Esjb1xcIciMvTR8QbUtVqqX0GhJ6CjO-gPUa3s35oPhkiqiX9fWZ8PvMNkrMLgGIaYoKToHjCfGHpL9aPy5NRA49ro6urmVwcZnkmbClhRQ8mnYa6bvGJlkgQF1vNDGxqNNknk7Lie_Guwm8Dl2SuoVS-RMC-OA-BTVBXsW5CV9uFO_GKXyzy3CMViDc7yFnmWBloAgFkKxZaL9XJAKaUsvnmw"
-//     },
-//     body: JSON.stringify({ 
-//     "input": {
-//     "bounds": {
-//       "bbox": bbox
-//     },
-//     "data": [
-//       {
-//         "dataFilter": {
-//           "maxCloudCoverage": 10,
-//           "mosaickingOrder": "leastCC"
-//         },
-//         "type": "sentinel-2-l2a"
-//       }
-//     ]
-//   },
-//   "aggregation": {
-//     "timeRange": {
-//       "from": from_date + "T00:00:00Z",
-//       "to": to_date + "T23:59:59Z"
-//     },
-//     "aggregationInterval": {
-//       "of": "P30D"
-//     },
-//     "width": 512,
-//     "height": 343.697,
-//     "evalscript": `
-//    //VERSION=3
-// function setup() {
-//     return {
-//         input: [{
-//         bands: [
-//             "B04",
-//             "B08",
-//             "SCL",
-//             "dataMask"
-//         ]
-//         }],
-//         mosaicking: "ORBIT",
-//     output: [
-//       {
-//         id: "data",
-//         bands: ["monthly_max_ndvi"]
-//       },
-//       {
-//         id: "dataMask",
-//         bands: 1
-//       }]
-//     };
-//     }
-
-//     function evaluatePixel(samples) {
-//        var max = 0;
-//     var hasData = 0;
-//     for (var i=0;i<samples.length;i++) {
-//       if (samples[i].dataMask == 1 && samples[i].SCL != 6 && samples[i].B04+samples[i].B08 != 0 ){
-//         hasData = 1;
-//         var ndvi = (samples[i].B08 - samples[i].B04)/(samples[i].B08 + samples[i].B04);
-//         max = ndvi > max ? ndvi:max;
-//       }
-//     }
-    
-//     return {
-//         data: [max],
-//         dataMask: [hasData]
-//     };
-//     }
-
-//         `
-//     }
-// })
-// });    
-//     return response.json()
-    
-
-// }
-
-
-// module.exports = maxNDVIMonthly();

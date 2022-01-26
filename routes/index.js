@@ -62,6 +62,7 @@ var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
 var sentinelhub_1 = require("../assets/sentinelhub");
+var ml_savitzky_golay_1 = __importDefault(require("ml-savitzky-golay"));
 var axios_1 = __importDefault(require("axios"));
 var version = '0.2.2';
 var openLocationCode = (0, pluscodes_1["default"])();
@@ -2628,8 +2629,10 @@ function avg_NDVI(req, res) {
                     return [4 /*yield*/, (0, sentinelhub_1.avgNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)];
                 case 2:
                     avg_ndvi = _a.sent();
+                    console.log(avg_ndvi);
                     list_avgNDVI = avg_ndvi.data.map(function (props) {
                         var interval = props.interval, outputs = props.outputs;
+                        console.log(outputs.data.bands);
                         if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
                             return {
                                 date: interval.from.split('T')[0],
@@ -2677,10 +2680,10 @@ function avg_NDVI(req, res) {
         });
     });
 }
-///Only draft - Not working yet
-function harvest_probability(req, res) {
+///in development
+function vegetation_monitoring(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var to_date, get_date, from_date, buff, harvest, stat_harvest, err_46;
+        var to_date, get_date, from_date, buff, harvest, stat_harvest, ndviMax, options, smoothing, peaks, last25Days, ndvi_trend, err_46;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2688,18 +2691,18 @@ function harvest_probability(req, res) {
                         return [2 /*return*/, res.status(400).json({
                                 status: "failure",
                                 message: "Request missing lat or lng",
-                                "function": "harvest_probability"
+                                "function": "vegetation_monitoring"
                             })];
                     }
                     if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng)) {
                         return [2 /*return*/, res.status(400).json({
                                 status: "failure",
                                 message: "Invalid input",
-                                "function": "harvest_probability"
+                                "function": "vegetation_monitoring"
                             })];
                     }
                     to_date = new Date().toISOString().split('.')[0] + "Z";
-                    get_date = (0, utils_1.subtractDays)(to_date, 90);
+                    get_date = (0, utils_1.subtractDays)(to_date, 60);
                     from_date = get_date.toISOString().split('.')[0] + "Z";
                     if (req.query.buffer) {
                         buff = Number(req.query.buffer);
@@ -2717,30 +2720,55 @@ function harvest_probability(req, res) {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, (0, sentinelhub_1.harvestProbability)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)];
+                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)];
                 case 2:
                     harvest = _a.sent();
-                    console.log(harvest);
                     stat_harvest = harvest.data.map(function (props) {
                         var interval = props.interval, outputs = props.outputs;
                         return {
                             date: interval.from.split('T')[0],
-                            // min: outputs.data.bands.B0.stats.min,
-                            // max: outputs.data.bands.B0.stats.max,
+                            min: outputs.data.bands.B0.stats.min,
+                            max: outputs.data.bands.B0.stats.max,
                             mean: outputs.data.bands.B0.stats.mean
+                            // samples: outputs.data.bands.B0.stats.sampleCount,
+                            // noData: outputs.data.bands.B0.stats.noDataCount
                         };
                     });
                     if (stat_harvest.length < 1) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'No data to display, data available minimum 5 days',
-                                "function": 'harvest_probability'
+                                "function": 'vegetation_monitoring'
                             })];
                     }
+                    ndviMax = stat_harvest.map(function (item) {
+                        return item.max;
+                    });
+                    console.log(ndviMax);
+                    options = { derivative: 0 };
+                    smoothing = (0, ml_savitzky_golay_1["default"])(ndviMax, 3, options);
+                    console.log(smoothing);
+                    peaks = (0, utils_1.smoothed_z_score)(smoothing, { lag: 3, influence: 0.85 });
+                    console.log(peaks.length + ":" + peaks.toString());
+                    last25Days = (ndviMax.slice(-5)).filter(Number);
+                    console.log(last25Days);
+                    ndvi_trend = {};
+                    if ((0, utils_1.mean)(last25Days) > 0.40) {
+                        ndvi_trend = "High values of NDVI, crop/grass foliage can be fully developed";
+                    }
+                    else if ((0, utils_1.sum)(peaks.slice(-4)) >= 2) {
+                        ndvi_trend = "NDVI trending up";
+                    }
+                    else if ((0, utils_1.sum)(peaks.slice(-3)) < 0) {
+                        ndvi_trend = "NDVI trending down";
+                    }
+                    else
+                        ndvi_trend = "no NDVI trend identified";
+                    console.log(ndvi_trend);
                     return [2 /*return*/, res.status(200).json({
                             status: 'success',
-                            message: stat_harvest,
-                            "function": 'harvest_probability'
+                            message: ndvi_trend,
+                            "function": 'vegetation_monitoring'
                         })];
                 case 3:
                     err_46 = _a.sent();
@@ -2748,7 +2776,7 @@ function harvest_probability(req, res) {
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
-                            "function": 'harvest_probability'
+                            "function": 'vegetation_monitoring'
                         })];
                 case 4: return [2 /*return*/];
             }
@@ -3031,8 +3059,8 @@ router.route('/error_log').post(error_log);
 //agriculture functions
 router.route('/NDVI_monthly').get(auth_1["default"], NDVI_monthly);
 router.route('/avg_NDVI').get(auth_1["default"], avg_NDVI);
-//in development - not working yet
-router.route('/harvest_probability').get(auth_1["default"], harvest_probability);
+//in development 
+router.route('/vegetation_monitoring').get(auth_1["default"], vegetation_monitoring);
 // finished
 router.route('/get_user_layer_metadata').get(get_user_layer_metadata);
 router.route('/get_layer_geoms').get(get_layer_geoms);

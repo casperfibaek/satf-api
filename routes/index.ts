@@ -5,18 +5,20 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
-import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays } from './utils';
+import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays, sum, mean, stddev, smoothed_z_score } from './utils';
 import {
   isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
 } from './validators';
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 import { callbackify } from 'util';
-import { maxNDVIMonthly, monthlyNDVI, avgNDVI, harvestProbability } from '../assets/sentinelhub';
+import { maxNDVI, monthlyNDVI, avgNDVI } from '../assets/sentinelhub';
 
 import buffer from '@turf/buffer';
 import { point } from '@turf/helpers';
 import bbox from '@turf/bbox';
+import area from '@turf/area';
+import savitzkyGolay from 'ml-savitzky-golay';
 import axios from "axios"
 // import fetch from 'node-fetch';
 import { timeStamp } from 'console';
@@ -2524,9 +2526,10 @@ async function avg_NDVI(req:Request, res:Response) {
 
   try {
     const avg_ndvi = await avgNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+    console.log(avg_ndvi)
     let list_avgNDVI = avg_ndvi.data.map((props) => {
       const {interval, outputs} = props
-
+      console.log(outputs.data.bands)
       if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
        return {
          date: interval.from.split('T')[0],
@@ -2576,25 +2579,25 @@ async function avg_NDVI(req:Request, res:Response) {
   }
 }
 
-///Only draft - Not working yet
-async function harvest_probability(req:Request, res:Response) {
+///in development
+async function vegetation_monitoring(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
       status: "failure",
       message: "Request missing lat or lng",
-      function: "harvest_probability",
+      function: "vegetation_monitoring",
     } as ApiResponse);
   }
   if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
     return res.status(400).json({
       status: "failure",
       message: "Invalid input",
-      function: "harvest_probability",
+      function: "vegetation_monitoring",
     } as ApiResponse);
   }
   const to_date = new Date().toISOString().split('.')[0]+"Z" 
 
-  const get_date = subtractDays(to_date, 90)
+  const get_date = subtractDays(to_date, 60)
   const from_date = get_date.toISOString().split('.')[0]+"Z"
 
   let buff;
@@ -2613,15 +2616,18 @@ async function harvest_probability(req:Request, res:Response) {
   }
 
   try {
-    const harvest = await harvestProbability(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
-    console.log(harvest)
+    const harvest = await maxNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+
     let stat_harvest = harvest.data.map((props) => {
       const {interval, outputs} = props
+
       return {
         date: interval.from.split('T')[0],
-        // min: outputs.data.bands.B0.stats.min,
-        // max: outputs.data.bands.B0.stats.max,
+        min: outputs.data.bands.B0.stats.min,
+        max: outputs.data.bands.B0.stats.max,
         mean: outputs.data.bands.B0.stats.mean
+        // samples: outputs.data.bands.B0.stats.sampleCount,
+        // noData: outputs.data.bands.B0.stats.noDataCount
       }
       
     });
@@ -2630,14 +2636,43 @@ async function harvest_probability(req:Request, res:Response) {
       return res.status(400).json({
       status: 'failure',
       message: 'No data to display, data available minimum 5 days',
-      function: 'harvest_probability',
+      function: 'vegetation_monitoring',
     });
-    }
+    }    
+      //smooth the values if needed with SG smoothing
+    let ndviMax = stat_harvest.map(item => {
+      return item.max
+    })
+    console.log(ndviMax)
+    let options = { derivative: 0}
+    let smoothing = savitzkyGolay(ndviMax, 3, options)
+    console.log(smoothing)
+      //identify a trending signal with smoothed_z_score
+    
+    const peaks = smoothed_z_score(smoothing, {lag:3, influence: 0.85})
+    console.log(peaks.length +":"+peaks.toString())
+    
+      //translate that into parameters
+    const last25Days = (ndviMax.slice(-5)).filter(Number)
+    console.log(last25Days)
 
+    let ndvi_trend = {}
+    if (mean(last25Days) > 0.40) {
+      ndvi_trend = "High values of NDVI, crop/grass foliage can be fully developed"
+    } else if (sum(peaks.slice(-4)) >= 2) {
+        ndvi_trend = "NDVI trending up"
+
+    } else if (sum(peaks.slice(-3)) < 0) {
+      ndvi_trend = "NDVI trending down"
+
+    } else 
+      ndvi_trend = "no NDVI trend identified"
+
+    console.log(ndvi_trend)
     return res.status(200).json({
       status: 'success',
-      message: stat_harvest,
-      function: 'harvest_probability',
+      message: ndvi_trend,
+      function: 'vegetation_monitoring',
     } as ApiResponse);
   } catch (err) {
     console.log(err);
@@ -2645,7 +2680,7 @@ async function harvest_probability(req:Request, res:Response) {
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
-      function: 'harvest_probability',
+      function: 'vegetation_monitoring',
     } as ApiResponse);
   }
 }
@@ -2927,8 +2962,8 @@ router.route('/error_log').post(error_log);
 //agriculture functions
 router.route('/NDVI_monthly').get(auth, NDVI_monthly);
 router.route('/avg_NDVI').get(auth, avg_NDVI);
-//in development - not working yet
-router.route('/harvest_probability').get(auth, harvest_probability);
+//in development 
+router.route('/vegetation_monitoring').get(auth, vegetation_monitoring);
 
 // finished
 router.route('/get_user_layer_metadata').get(get_user_layer_metadata)
