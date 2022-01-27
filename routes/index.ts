@@ -848,7 +848,7 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
   const profile = "walking"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
  
-  const isochrone = JSON.stringify(response) 
+  const isochrone = JSON.stringify(response.geometry) 
 
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_walk;
@@ -900,7 +900,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
   const profile = "cycling"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
 
-  const isochrone = JSON.stringify(response) 
+  const isochrone = JSON.stringify(response.geometry) 
 
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_bike;
@@ -968,7 +968,7 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   const profile = "driving"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
  
-  const isochrone = JSON.stringify(response) 
+  const isochrone = JSON.stringify(response.geometry) 
 
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
@@ -1019,7 +1019,7 @@ async function nightlights(req:Request, res:Response) {
   const profile = "walking"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
  
-  const isochrone = JSON.stringify(response) 
+  const isochrone = JSON.stringify(response.geometry) 
  
   const dbQuery = `
     SELECT avg_timeseries_viirs_isochrone('${isochrone}') as nightlight;
@@ -1069,8 +1069,8 @@ async function demography(req:Request, res:Response) {
   const profile = "walking"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
  
-  const isochrone = JSON.stringify(response) 
-  
+  const isochrone = JSON.stringify(response.geometry) 
+  // console.log(isochrone)
   const dbQuery = `
     SELECT demography_isochrone('${isochrone}') as demography;
   `;
@@ -1386,30 +1386,30 @@ async function isochrone_walk(req:Request, res:Response) {
   }
 
   // function creating an isochrone of walking distance
-  const dbQuery = `
-    SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
-  `;
+
+    const profile = "walking"
+    const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+    // console.log(response)
+    // const isochrone = JSON.stringify(response.coordinates) 
+
+  // const dbQuery = `
+  //   SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
+  // `;
 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
+    // const dbResponse = await pool.query(dbQuery);
       return res.status(200).json({
         status: 'success',
-        message: JSON.parse(dbResponse.rows[0].geom),
+        message: response,
         function: 'isochrone_walk',
       } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_walk',
-    } as ApiResponse);
-  } catch (err) {
+    } catch (err) {
     console.log(err);
+
     return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_walk',
+      status: "failure",
+      message: "Error encountered on server",
+      function: "isochrone_walk",
     } as ApiResponse);
   }
 }
@@ -1432,24 +1432,18 @@ async function isochrone_bike(req:Request, res:Response) {
   }
 
   // function creating an isochrone of biking distance
-  const dbQuery = `
-    SELECT ST_AsGeoJSON(pgr_isochroneBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
-  `;
+  // const dbQuery = `
+  //   SELECT ST_AsGeoJSON(pgr_isochroneBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
+  // `;
+    const profile = "cycling"
+    const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: JSON.parse(dbResponse.rows[0].geom),
+        message: response,
         function: 'isochrone_bike',
       } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_bike',
-    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1478,24 +1472,21 @@ async function isochrone_car(req:Request, res:Response) {
   }
 
   // function creating an isochrone of driving distance
-  const dbQuery = `
-    SELECT ST_AsGeoJSON(pgr_isochroneCar('${req.query.lng}', '${req.query.lat}', '${Number(req.query.minutes)}'), 6) as geom;
-  `;
+  // const dbQuery = `
+  //   SELECT ST_AsGeoJSON(pgr_isochroneCar('${req.query.lng}', '${req.query.lat}', '${Number(req.query.minutes)}'), 6) as geom;
+  // `;
+
+  const profile = "driving"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
+    // const dbResponse = await pool.query(dbQuery);
+    // if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: JSON.parse(dbResponse.rows[0].geom),
+        message: response,
         function: 'isochrone_car',
       } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_car',
-    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1924,7 +1915,7 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_walk",
     } as ApiResponse);
   // function without output of minutes and distance in meters from A to B
@@ -1983,7 +1974,7 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_bike",
     } as ApiResponse);
 
@@ -2038,7 +2029,7 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_car",
     } as ApiResponse);
  
@@ -2325,7 +2316,7 @@ async function get_api_isochrone(req, res) {
 
 }
 
-// mmapbox internal isochrone function
+// mmapbox internal isochrone function - outputs properties and geometry
 
 async function _get_isochrone(profile, lng, lat, minutes) {
 
@@ -2335,10 +2326,10 @@ async function _get_isochrone(profile, lng, lat, minutes) {
     // const time_min = minutes*60
 
     const response = await axios(
-      "https://api.mapbox.com/isochrone/v1/mapbox/"+ profile + "/" + lng + "," + lat + "?contours_minutes="+ minutes + "&polygons=true&access_token=" + key);
+      "https://api.mapbox.com/isochrone/v1/mapbox/"+ profile + "/" + lng + "," + lat + "?contours_minutes="+ minutes + "&contours_colors=9AD4EA&polygons=true&access_token=" + key);
     const data = await response.data;
-    
-    const isochrone = data.features[0].geometry;
+
+    const isochrone = data.features[0];
 
     // console.log(isochrone);
     
@@ -2400,11 +2391,11 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
     // const time_min = minutes*60
 
     const response = await axios(
-      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?access_token=" + key);
+      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?overview=full&geometries=geojson&access_token=" + key);
     const data = await response.data;
     
     const directions = data.routes[0];
-    
+
     return directions
     }
   
@@ -2413,7 +2404,7 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
   }
   
 }
-// NDVI during a period of 30 days, choosing year and month (to be changed to start month and end month), on a buffered area (100, 500, 1000)
+// NDVI during a period of 30 days, choosing start date and end date), on a buffered area (100, 500, 1000)
 async function NDVI_monthly(req:Request, res:Response) {
      if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
