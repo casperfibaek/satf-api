@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
-import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays, sum, mean, stddev, smoothed_z_score } from './utils';
+import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays, toHHMMSS, sum, mean, stddev, smoothed_z_score } from './utils';
 import {
   isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
 } from './validators';
@@ -1912,10 +1912,12 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
     try {
 
   const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+  console.log(directions.duration)
+  const duration = toHHMMSS(directions.duration)
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_walk",
     } as ApiResponse);
   // function without output of minutes and distance in meters from A to B
@@ -1971,10 +1973,12 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
   try {
 
   const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+  
+  const duration = toHHMMSS(directions.duration)
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_bike",
     } as ApiResponse);
 
@@ -2026,10 +2030,12 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
   try {
 
   const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+  
+  const duration = toHHMMSS(directions.duration)
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_car",
     } as ApiResponse);
  

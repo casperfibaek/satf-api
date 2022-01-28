@@ -1983,7 +1983,7 @@ function delete_user(req, res) {
 // Getting time and distance from A to B
 function a_to_b_time_distance_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var profile, directions, err_30;
+        var profile, directions, duration, err_30;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2008,9 +2008,11 @@ function a_to_b_time_distance_walk(req, res) {
                     return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
                     directions = _a.sent();
+                    console.log(directions.duration);
+                    duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
                             "function": "a_to_b_time_distance_walk"
                         })];
                 case 3:
@@ -2029,7 +2031,7 @@ function a_to_b_time_distance_walk(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var profile, directions, err_31;
+        var profile, directions, duration, err_31;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2054,9 +2056,10 @@ function a_to_b_time_distance_bike(req, res) {
                     return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
                     directions = _a.sent();
+                    duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
                             "function": "a_to_b_time_distance_bike"
                         })];
                 case 3:
@@ -2075,7 +2078,7 @@ function a_to_b_time_distance_bike(req, res) {
 // A to B driving function
 function a_to_b_time_distance_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var profile, directions, err_32;
+        var profile, directions, duration, err_32;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2100,9 +2103,10 @@ function a_to_b_time_distance_car(req, res) {
                     return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
                     directions = _a.sent();
+                    duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
                             "function": "a_to_b_time_distance_car"
                         })];
                 case 3:

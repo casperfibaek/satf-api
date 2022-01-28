@@ -3,7 +3,7 @@
   Utility functions
 */
 exports.__esModule = true;
-exports.smoothed_z_score = exports.stddev = exports.mean = exports.sum = exports.subtractDays = exports.generateGeojson = exports.generatePoint = exports.translateUrbanClasses = void 0;
+exports.smoothed_z_score = exports.stddev = exports.mean = exports.sum = exports.toHHMMSS = exports.subtractDays = exports.generateGeojson = exports.generatePoint = exports.translateUrbanClasses = void 0;
 function translateUrbanClasses(klass) {
     if (Number.isNaN(klass)) {
         return 'Unknown';
@@ -59,6 +59,17 @@ function subtractDays(date, days) {
     return result;
 }
 exports.subtractDays = subtractDays;
+var toHHMMSS = function (secs) {
+    var sec_num = parseInt(secs, 10);
+    var hours = Math.floor(sec_num / 3600);
+    var minutes = Math.floor(sec_num / 60) % 60;
+    var seconds = sec_num % 60;
+    return [hours, minutes, seconds]
+        .map(function (v) { return v < 10 ? "0" + v : v; })
+        .filter(function (v, i) { return v !== "00" || i > 0; })
+        .join(":");
+};
+exports.toHHMMSS = toHHMMSS;
 function sum(a) {
     return a.reduce(function (acc, val) { return acc + val; });
 }
