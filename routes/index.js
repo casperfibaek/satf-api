@@ -1425,7 +1425,7 @@ function isochrone_walk(req, res) {
                         // const dbResponse = await pool.query(dbQuery);
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: response,
+                                message: JSON.stringify(response),
                                 "function": 'isochrone_walk'
                             })];
                     }
@@ -2486,7 +2486,7 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/directions/v5/mapbox/" + profile + "/" + lng1 + "," + lat1 + ";" + lng2 + "," + lat2 + "?overview=full&geometries=geojson&access_token=" + key)];
+                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/directions/v5/mapbox/" + profile + "/" + lng1 + "," + lat1 + ";" + lng2 + "," + lat2 + "?overview=simplified&geometries=geojson&access_token=" + key)];
                 case 2:
                     response = _a.sent();
                     return [4 /*yield*/, response.data];

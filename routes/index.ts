@@ -1400,7 +1400,7 @@ async function isochrone_walk(req:Request, res:Response) {
     // const dbResponse = await pool.query(dbQuery);
       return res.status(200).json({
         status: 'success',
-        message: response,
+        message: JSON.stringify(response),
         function: 'isochrone_walk',
       } as ApiResponse);
     } catch (err) {
@@ -2391,7 +2391,7 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
     // const time_min = minutes*60
 
     const response = await axios(
-      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?overview=full&geometries=geojson&access_token=" + key);
+      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?overview=simplified&geometries=geojson&access_token=" + key);
     const data = await response.data;
     
     const directions = data.routes[0];
