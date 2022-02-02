@@ -23,7 +23,7 @@ import axios from "axios"
 // import fetch from 'node-fetch';
 import { timeStamp } from 'console';
 
-const version = '0.2.2';
+const version = '0.8.0';
 
 interface ApiResponse {
   status: 'failure' |'success',
@@ -2221,20 +2221,21 @@ async function get_forecast(req: Request, res: Response) {
     } as ApiResponse);
   }
   var key = "058aa5a4622d21864fcbafbb8c28a128";
+  const response = await axios(
+    "https://api.openweathermap.org/data/2.5/onecall?lat=" +
+      req.query.lat +
+      "&lon=" +
+      req.query.lng + 
+      "&exclude=current,minutely,hourly" +
+      "&units=metric&appid=" +
+      key
+  );
+  console.log(response.data.length)
   try {
-    const response = await axios(
-      "https://api.openweathermap.org/data/2.5/onecall?lat=" +
-        req.query.lat +
-        "&lon=" +
-        req.query.lng + 
-        "&exclude=current,minutely,hourly" +
-        "&units=metric&appid=" +
-        key
-    );
     const data = await response.data;
-    
+    console.log(data)
+    if (data !== '' && data.constructor === Object) {
     const format_time = (s) => new Date(s * 1e3).toISOString().slice(0,-14);
-
 
     let list_forecast = data.daily.map(( props ) => {
       const { weather, dt, temp, humidity, rain, clouds, icon, pop } = props
@@ -2260,20 +2261,24 @@ async function get_forecast(req: Request, res: Response) {
 
       return entry
     });
- 
-          
+
     return res.status(200).json({
-      status: "success",
+      status: 'success',
       message: list_forecast,
-      function: "get_forecast",
+      function: 'get_forecast',
+    } as ApiResponse);
+  }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'get_forecast',
     } as ApiResponse);
   } catch (err) {
     console.log(err);
-
     return res.status(500).json({
-      status: "failure",
-      message: "Error encountered on server",
-      function: "get_forecast",
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'get_forecast',
     } as ApiResponse);
   }
 }
@@ -2452,11 +2457,23 @@ async function NDVI_monthly(req:Request, res:Response) {
       )
   }
   
+  const NDVImonthly = await monthlyNDVI(Number(lat), Number(lng), from_date, to_date, buff)
+  console.log(NDVImonthly)
   try {
-    const NDVImonthly = await monthlyNDVI(Number(lat), Number(lng), from_date, to_date, buff)
-    console.log(NDVImonthly)
+    if (NDVImonthly !== '' && NDVImonthly.constructor === Object) {
       let list_NDVImonthly = NDVImonthly.data.map((props) => {
         const {interval, outputs} = props
+        if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+          return {
+            date: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
+            min: 0,
+            max: 0,
+            mean: 0,
+            stDev: 0,
+            samples: "Too cloudy to retrieve data",
+            noData: outputs.data.bands.B0.stats.noDataCount
+            }
+        }
          return {
           date: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
           min: outputs.data.bands.B0.stats.min,
@@ -2468,14 +2485,20 @@ async function NDVI_monthly(req:Request, res:Response) {
         }
     
       });
+
     return res.status(200).json({
       status: 'success',
       message: list_NDVImonthly,
       function: 'NDVI_monthly',
     } as ApiResponse);
+  }
+  return res.status(500).json({
+    status: 'failure',
+    message: 'Error encountered on server',
+    function: 'NDVI_monthly',
+  } as ApiResponse);
   } catch (err) {
     console.log(err);
-
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
@@ -2520,10 +2543,11 @@ async function avg_NDVI(req:Request, res:Response) {
       function: 'avg_NDVI',
     }))
   }
+  const avg_ndvi = await avgNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+  console.log(avg_ndvi)
 
   try {
-    const avg_ndvi = await avgNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
-    console.log(avg_ndvi)
+    if (avg_ndvi !== '' && avg_ndvi.constructor === Object) {
     let list_avgNDVI = avg_ndvi.data.map((props) => {
       const {interval, outputs} = props
       console.log(outputs.data.bands)
@@ -2565,9 +2589,14 @@ async function avg_NDVI(req:Request, res:Response) {
       message: list_avgNDVI,
       function: 'avg_NDVI',
     } as ApiResponse);
+  }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'avg_NDVI',
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
-
     return res.status(500).json({
       status: 'failure',
       message: 'Error encountered on server',
@@ -2612,23 +2641,35 @@ async function vegetation_monitoring(req:Request, res:Response) {
     }))
   }
 
+  const harvest = await maxNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+  // console.log(harvest.data)
   try {
-    const harvest = await maxNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
-
+    if (harvest !== '' && harvest.constructor === Object) {
     let stat_harvest = harvest.data.map((props) => {
       const {interval, outputs} = props
-
+      if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                return {
+            date: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
+            min: 0,
+            max: 0,
+            mean: 0,
+            stDev: 0,
+            samples: "Too cloudy to retrieve data",
+            noData: outputs.data.bands.B0.stats.noDataCount
+            }
+        }
+      
       return {
         date: interval.from.split('T')[0],
         min: outputs.data.bands.B0.stats.min,
         max: outputs.data.bands.B0.stats.max,
-        mean: outputs.data.bands.B0.stats.mean
-        // samples: outputs.data.bands.B0.stats.sampleCount,
-        // noData: outputs.data.bands.B0.stats.noDataCount
+        mean: outputs.data.bands.B0.stats.mean,
+        samples: outputs.data.bands.B0.stats.sampleCount,
+        noData: outputs.data.bands.B0.stats.noDataCount
       }
       
     });
-    
+    console.log(stat_harvest)
     if (stat_harvest.length < 1) {
       return res.status(400).json({
       status: 'failure',
@@ -2640,23 +2681,32 @@ async function vegetation_monitoring(req:Request, res:Response) {
     let ndviMax = stat_harvest.map(item => {
       return item.max
     })
+    if (sum(ndviMax) == 0) {
+      return (
+        res.status(400).json({
+          status: 'failure',
+          message: 'Too cloudy to retrieve data and calculate trend',
+          function: 'vegetation_monitoring',
+      })
+      )
+    }
     console.log(ndviMax)
     let options = { derivative: 0}
     let smoothing = savitzkyGolay(ndviMax, 3, options)
     console.log(smoothing)
       //identify a trending signal with smoothed_z_score
     
-    const peaks = smoothed_z_score(smoothing, {lag:3, influence: 0.85})
+    const peaks = smoothed_z_score(smoothing, {lag:1, influence: 0.75})
     console.log(peaks.length +":"+peaks.toString())
     
       //translate that into parameters
-    const last25Days = (ndviMax.slice(-5)).filter(Number)
+    const last25Days = (peaks.slice(-5)).filter(Number.isFinite)
     console.log(last25Days)
 
     let ndvi_trend = {}
-    if (mean(last25Days) > 0.40) {
+    if (mean(last25Days) > 0.40 && sum(peaks.slice(-4)) >= 2) {
       ndvi_trend = "High values of NDVI, crop/grass foliage can be fully developed"
-    } else if (sum(peaks.slice(-4)) >= 2) {
+    } else if (sum(peaks.slice(-2)) >= 2) {
         ndvi_trend = "NDVI trending up"
 
     } else if (sum(peaks.slice(-3)) < 0) {
@@ -2671,6 +2721,12 @@ async function vegetation_monitoring(req:Request, res:Response) {
       message: ndvi_trend,
       function: 'vegetation_monitoring',
     } as ApiResponse);
+  }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'vegetation_monitoring',
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
 
@@ -2682,6 +2738,62 @@ async function vegetation_monitoring(req:Request, res:Response) {
   }
 }
 
+
+async function nearest_waterbody(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat or lng',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
+  }
+
+  const dbQuery = `
+    SELECT ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('${req.query.lng}', '${req.query.lat}')::geography, 4326))::numeric, 2) as dist, 
+    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area
+    FROM gh_tz_waterbodies w
+    ORDER BY dist
+    LIMIT 1;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    let body_area = {}
+    if (dbResponse.rows[0].body_area == 0) {
+      body_area = 'data not available'; //not active for now
+    }
+    else
+      body_area = dbResponse.rows[0].body_area
+    if (dbResponse.rowCount > 0) {
+      console.log(dbResponse.rows[0])
+      return res.status(200).json({
+        status: 'success',
+        message: {distance_meters: dbResponse.rows[0].dist},
+        function: 'nearest_waterbody',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
+  }
+}
 
 async function get_user_layer_metadata(req:Request, res:Response) {
 
@@ -2940,6 +3052,7 @@ router.route('/nearest_placename').get(auth, nearest_placename);
 router.route('/nearest_poi').get(auth, nearest_poi);
 router.route('/nearest_bank').get(auth, nearest_bank);
 router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
+router.route('/nearest_waterbody').get(auth, nearest_waterbody);
 router.route('/get_banks').get(auth, get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);

@@ -64,7 +64,7 @@ var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
 var sentinelhub_1 = require("../assets/sentinelhub");
 var ml_savitzky_golay_1 = __importDefault(require("ml-savitzky-golay"));
 var axios_1 = __importDefault(require("axios"));
-var version = '0.2.2';
+var version = '0.8.0';
 var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
 var pool = new pg_1["default"].Pool(credentials_1["default"]);
@@ -2304,9 +2304,6 @@ function get_forecast(req, res) {
                             })];
                     }
                     key = "058aa5a4622d21864fcbafbb8c28a128";
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 4, , 5]);
                     return [4 /*yield*/, (0, axios_1["default"])("https://api.openweathermap.org/data/2.5/onecall?lat=" +
                             req.query.lat +
                             "&lon=" +
@@ -2314,43 +2311,55 @@ function get_forecast(req, res) {
                             "&exclude=current,minutely,hourly" +
                             "&units=metric&appid=" +
                             key)];
-                case 2:
+                case 1:
                     response = _a.sent();
+                    console.log(response.data.length);
+                    _a.label = 2;
+                case 2:
+                    _a.trys.push([2, 4, , 5]);
                     return [4 /*yield*/, response.data];
                 case 3:
                     data_1 = _a.sent();
-                    format_time_1 = function (s) { return new Date(s * 1e3).toISOString().slice(0, -14); };
-                    list_forecast = data_1.daily.map(function (props) {
-                        var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds, icon = props.icon, pop = props.pop;
-                        var entry = {
-                            date: format_time_1(dt),
-                            description: weather[0].description,
-                            // icon: weather[0].icon,
-                            temp_min_c: temp.min,
-                            temp_max_c: temp.max,
-                            humidity_perc: humidity,
-                            rain_mm: rain,
-                            clouds_perc: clouds,
-                            probability_of_precipitation_perc: pop,
-                            alerts: 'no alerts'
-                        };
-                        if (data_1.alerts) {
-                            entry = __assign(__assign({}, entry), { alerts: data_1.alerts[0].event + '; ' + data_1.alerts[0].description });
-                        }
-                        return entry;
-                    });
-                    return [2 /*return*/, res.status(200).json({
-                            status: "success",
-                            message: list_forecast,
-                            "function": "get_forecast"
+                    console.log(data_1);
+                    if (data_1 !== '' && data_1.constructor === Object) {
+                        format_time_1 = function (s) { return new Date(s * 1e3).toISOString().slice(0, -14); };
+                        list_forecast = data_1.daily.map(function (props) {
+                            var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds, icon = props.icon, pop = props.pop;
+                            var entry = {
+                                date: format_time_1(dt),
+                                description: weather[0].description,
+                                // icon: weather[0].icon,
+                                temp_min_c: temp.min,
+                                temp_max_c: temp.max,
+                                humidity_perc: humidity,
+                                rain_mm: rain,
+                                clouds_perc: clouds,
+                                probability_of_precipitation_perc: pop,
+                                alerts: 'no alerts'
+                            };
+                            if (data_1.alerts) {
+                                entry = __assign(__assign({}, entry), { alerts: data_1.alerts[0].event + '; ' + data_1.alerts[0].description });
+                            }
+                            return entry;
+                        });
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: list_forecast,
+                                "function": 'get_forecast'
+                            })];
+                    }
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_forecast'
                         })];
                 case 4:
                     err_36 = _a.sent();
                     console.log(err_36);
                     return [2 /*return*/, res.status(500).json({
-                            status: "failure",
-                            message: "Error encountered on server",
-                            "function": "get_forecast"
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_forecast'
                         })];
                 case 5: return [2 /*return*/];
             }
@@ -2510,7 +2519,7 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
 // NDVI during a period of 30 days, choosing start date and end date), on a buffered area (100, 500, 1000)
 function NDVI_monthly(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, lng, lat, to_date, from_date, buffer, buff, NDVImonthly, list_NDVImonthly, err_41;
+        var _a, lng, lat, to_date, from_date, buffer, buff, NDVImonthly, list_NDVImonthly;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2543,39 +2552,56 @@ function NDVI_monthly(req, res) {
                                 "function": 'NDVI_monthly'
                             }))];
                     }
-                    _b.label = 1;
-                case 1:
-                    _b.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, (0, sentinelhub_1.monthlyNDVI)(Number(lat), Number(lng), from_date, to_date, buff)];
-                case 2:
+                case 1:
                     NDVImonthly = _b.sent();
                     console.log(NDVImonthly);
-                    list_NDVImonthly = NDVImonthly.data.map(function (props) {
-                        var interval = props.interval, outputs = props.outputs;
-                        return {
-                            date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
-                            min: outputs.data.bands.B0.stats.min,
-                            max: outputs.data.bands.B0.stats.max,
-                            mean: outputs.data.bands.B0.stats.mean,
-                            stDev: outputs.data.bands.B0.stats.stDev,
-                            samples: outputs.data.bands.B0.stats.sampleCount,
-                            noData: outputs.data.bands.B0.stats.noDataCount
-                        };
-                    });
-                    return [2 /*return*/, res.status(200).json({
-                            status: 'success',
-                            message: list_NDVImonthly,
-                            "function": 'NDVI_monthly'
-                        })];
-                case 3:
-                    err_41 = _b.sent();
-                    console.log(err_41);
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error encountered on server',
-                            "function": 'NDVI_monthly'
-                        })];
-                case 4: return [2 /*return*/];
+                    try {
+                        if (NDVImonthly !== '' && NDVImonthly.constructor === Object) {
+                            list_NDVImonthly = NDVImonthly.data.map(function (props) {
+                                var interval = props.interval, outputs = props.outputs;
+                                if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                                    return {
+                                        date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                                        min: 0,
+                                        max: 0,
+                                        mean: 0,
+                                        stDev: 0,
+                                        samples: "Too cloudy to retrieve data",
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                                }
+                                return {
+                                    date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                                    min: outputs.data.bands.B0.stats.min,
+                                    max: outputs.data.bands.B0.stats.max,
+                                    mean: outputs.data.bands.B0.stats.mean,
+                                    stDev: outputs.data.bands.B0.stats.stDev,
+                                    samples: outputs.data.bands.B0.stats.sampleCount,
+                                    noData: outputs.data.bands.B0.stats.noDataCount
+                                };
+                            });
+                            return [2 /*return*/, res.status(200).json({
+                                    status: 'success',
+                                    message: list_NDVImonthly,
+                                    "function": 'NDVI_monthly'
+                                })];
+                        }
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'NDVI_monthly'
+                            })];
+                    }
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'NDVI_monthly'
+                            })];
+                    }
+                    return [2 /*return*/];
             }
         });
     });
@@ -2583,7 +2609,7 @@ function NDVI_monthly(req, res) {
 // average NDVI starting from now back to specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
 function avg_NDVI(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var to_date, get_date, from_date, buff, avg_ndvi, list_avgNDVI, err_42;
+        var to_date, get_date, from_date, buff, avg_ndvi, list_avgNDVI;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2617,59 +2643,65 @@ function avg_NDVI(req, res) {
                                 "function": 'avg_NDVI'
                             }))];
                     }
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, (0, sentinelhub_1.avgNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)];
-                case 2:
+                case 1:
                     avg_ndvi = _a.sent();
                     console.log(avg_ndvi);
-                    list_avgNDVI = avg_ndvi.data.map(function (props) {
-                        var interval = props.interval, outputs = props.outputs;
-                        console.log(outputs.data.bands);
-                        if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
-                            return {
-                                date: interval.from.split('T')[0],
-                                min: 0,
-                                max: 0,
-                                mean: 0,
-                                stDev: 0,
-                                samples: "Too cloudy to retrieve data",
-                                noData: outputs.data.bands.B0.stats.noDataCount
-                            };
+                    try {
+                        if (avg_ndvi !== '' && avg_ndvi.constructor === Object) {
+                            list_avgNDVI = avg_ndvi.data.map(function (props) {
+                                var interval = props.interval, outputs = props.outputs;
+                                console.log(outputs.data.bands);
+                                if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                                    return {
+                                        date: interval.from.split('T')[0],
+                                        min: 0,
+                                        max: 0,
+                                        mean: 0,
+                                        stDev: 0,
+                                        samples: "Too cloudy to retrieve data",
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                                }
+                                else
+                                    return {
+                                        date: interval.from.split('T')[0],
+                                        min: outputs.data.bands.B0.stats.min,
+                                        max: outputs.data.bands.B0.stats.max,
+                                        mean: outputs.data.bands.B0.stats.mean,
+                                        stDev: outputs.data.bands.B0.stats.stDev,
+                                        samples: outputs.data.bands.B0.stats.sampleCount,
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                            });
+                            if (list_avgNDVI.length < 1) {
+                                return [2 /*return*/, res.status(400).json({
+                                        status: 'failure',
+                                        message: 'No data to display, data available minimum 5 days',
+                                        "function": 'avg_NDVI'
+                                    })];
+                            }
+                            return [2 /*return*/, res.status(200).json({
+                                    status: 'success',
+                                    message: list_avgNDVI,
+                                    "function": 'avg_NDVI'
+                                })];
                         }
-                        else
-                            return {
-                                date: interval.from.split('T')[0],
-                                min: outputs.data.bands.B0.stats.min,
-                                max: outputs.data.bands.B0.stats.max,
-                                mean: outputs.data.bands.B0.stats.mean,
-                                stDev: outputs.data.bands.B0.stats.stDev,
-                                samples: outputs.data.bands.B0.stats.sampleCount,
-                                noData: outputs.data.bands.B0.stats.noDataCount
-                            };
-                    });
-                    if (list_avgNDVI.length < 1) {
-                        return [2 /*return*/, res.status(400).json({
+                        return [2 /*return*/, res.status(500).json({
                                 status: 'failure',
-                                message: 'No data to display, data available minimum 5 days',
+                                message: 'Error encountered on server',
                                 "function": 'avg_NDVI'
                             })];
                     }
-                    return [2 /*return*/, res.status(200).json({
-                            status: 'success',
-                            message: list_avgNDVI,
-                            "function": 'avg_NDVI'
-                        })];
-                case 3:
-                    err_42 = _a.sent();
-                    console.log(err_42);
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error encountered on server',
-                            "function": 'avg_NDVI'
-                        })];
-                case 4: return [2 /*return*/];
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'avg_NDVI'
+                            })];
+                    }
+                    return [2 /*return*/];
             }
         });
     });
@@ -2677,7 +2709,7 @@ function avg_NDVI(req, res) {
 ///in development
 function vegetation_monitoring(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var to_date, get_date, from_date, buff, harvest, stat_harvest, ndviMax, options, smoothing, peaks, last25Days, ndvi_trend, err_43;
+        var to_date, get_date, from_date, buff, harvest, stat_harvest, ndviMax, options, smoothing, peaks, last25Days, ndvi_trend;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2711,66 +2743,153 @@ function vegetation_monitoring(req, res) {
                                 "function": 'harvest_probability'
                             }))];
                     }
-                    _a.label = 1;
+                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+                        // console.log(harvest.data)
+                    ];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)];
-                case 2:
                     harvest = _a.sent();
-                    stat_harvest = harvest.data.map(function (props) {
-                        var interval = props.interval, outputs = props.outputs;
-                        return {
-                            date: interval.from.split('T')[0],
-                            min: outputs.data.bands.B0.stats.min,
-                            max: outputs.data.bands.B0.stats.max,
-                            mean: outputs.data.bands.B0.stats.mean
-                            // samples: outputs.data.bands.B0.stats.sampleCount,
-                            // noData: outputs.data.bands.B0.stats.noDataCount
-                        };
-                    });
-                    if (stat_harvest.length < 1) {
-                        return [2 /*return*/, res.status(400).json({
+                    // console.log(harvest.data)
+                    try {
+                        if (harvest !== '' && harvest.constructor === Object) {
+                            stat_harvest = harvest.data.map(function (props) {
+                                var interval = props.interval, outputs = props.outputs;
+                                if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                                    return {
+                                        date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                                        min: 0,
+                                        max: 0,
+                                        mean: 0,
+                                        stDev: 0,
+                                        samples: "Too cloudy to retrieve data",
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                                }
+                                return {
+                                    date: interval.from.split('T')[0],
+                                    min: outputs.data.bands.B0.stats.min,
+                                    max: outputs.data.bands.B0.stats.max,
+                                    mean: outputs.data.bands.B0.stats.mean,
+                                    samples: outputs.data.bands.B0.stats.sampleCount,
+                                    noData: outputs.data.bands.B0.stats.noDataCount
+                                };
+                            });
+                            console.log(stat_harvest);
+                            if (stat_harvest.length < 1) {
+                                return [2 /*return*/, res.status(400).json({
+                                        status: 'failure',
+                                        message: 'No data to display, data available minimum 5 days',
+                                        "function": 'vegetation_monitoring'
+                                    })];
+                            }
+                            ndviMax = stat_harvest.map(function (item) {
+                                return item.max;
+                            });
+                            if ((0, utils_1.sum)(ndviMax) == 0) {
+                                return [2 /*return*/, (res.status(400).json({
+                                        status: 'failure',
+                                        message: 'Too cloudy to retrieve data and calculate trend',
+                                        "function": 'vegetation_monitoring'
+                                    }))];
+                            }
+                            console.log(ndviMax);
+                            options = { derivative: 0 };
+                            smoothing = (0, ml_savitzky_golay_1["default"])(ndviMax, 3, options);
+                            console.log(smoothing);
+                            peaks = (0, utils_1.smoothed_z_score)(smoothing, { lag: 1, influence: 0.75 });
+                            console.log(peaks.length + ":" + peaks.toString());
+                            last25Days = (peaks.slice(-5)).filter(Number.isFinite);
+                            console.log(last25Days);
+                            ndvi_trend = {};
+                            if ((0, utils_1.mean)(last25Days) > 0.40 && (0, utils_1.sum)(peaks.slice(-4)) >= 2) {
+                                ndvi_trend = "High values of NDVI, crop/grass foliage can be fully developed";
+                            }
+                            else if ((0, utils_1.sum)(peaks.slice(-2)) >= 2) {
+                                ndvi_trend = "NDVI trending up";
+                            }
+                            else if ((0, utils_1.sum)(peaks.slice(-3)) < 0) {
+                                ndvi_trend = "NDVI trending down";
+                            }
+                            else
+                                ndvi_trend = "no NDVI trend identified";
+                            console.log(ndvi_trend);
+                            return [2 /*return*/, res.status(200).json({
+                                    status: 'success',
+                                    message: ndvi_trend,
+                                    "function": 'vegetation_monitoring'
+                                })];
+                        }
+                        return [2 /*return*/, res.status(500).json({
                                 status: 'failure',
-                                message: 'No data to display, data available minimum 5 days',
+                                message: 'Error encountered on server',
                                 "function": 'vegetation_monitoring'
                             })];
                     }
-                    ndviMax = stat_harvest.map(function (item) {
-                        return item.max;
-                    });
-                    console.log(ndviMax);
-                    options = { derivative: 0 };
-                    smoothing = (0, ml_savitzky_golay_1["default"])(ndviMax, 3, options);
-                    console.log(smoothing);
-                    peaks = (0, utils_1.smoothed_z_score)(smoothing, { lag: 3, influence: 0.85 });
-                    console.log(peaks.length + ":" + peaks.toString());
-                    last25Days = (ndviMax.slice(-5)).filter(Number);
-                    console.log(last25Days);
-                    ndvi_trend = {};
-                    if ((0, utils_1.mean)(last25Days) > 0.40) {
-                        ndvi_trend = "High values of NDVI, crop/grass foliage can be fully developed";
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'vegetation_monitoring'
+                            })];
                     }
-                    else if ((0, utils_1.sum)(peaks.slice(-4)) >= 2) {
-                        ndvi_trend = "NDVI trending up";
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+function nearest_waterbody(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dbQuery, dbResponse, body_area, err_41;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing lat or lng',
+                                "function": 'nearest_waterbody'
+                            })];
                     }
-                    else if ((0, utils_1.sum)(peaks.slice(-3)) < 0) {
-                        ndvi_trend = "NDVI trending down";
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Invalid input',
+                                "function": 'nearest_waterbody'
+                            })];
+                    }
+                    dbQuery = "\n    SELECT ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('" + req.query.lng + "', '" + req.query.lat + "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    body_area = {};
+                    if (dbResponse.rows[0].body_area == 0) {
+                        body_area = 'data not available'; //not active for now
                     }
                     else
-                        ndvi_trend = "no NDVI trend identified";
-                    console.log(ndvi_trend);
-                    return [2 /*return*/, res.status(200).json({
-                            status: 'success',
-                            message: ndvi_trend,
-                            "function": 'vegetation_monitoring'
-                        })];
-                case 3:
-                    err_43 = _a.sent();
-                    console.log(err_43);
+                        body_area = dbResponse.rows[0].body_area;
+                    if (dbResponse.rowCount > 0) {
+                        console.log(dbResponse.rows[0]);
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: { distance_meters: dbResponse.rows[0].dist },
+                                "function": 'nearest_waterbody'
+                            })];
+                    }
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
-                            "function": 'vegetation_monitoring'
+                            "function": 'nearest_waterbody'
+                        })];
+                case 3:
+                    err_41 = _a.sent();
+                    console.log(err_41);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'nearest_waterbody'
                         })];
                 case 4: return [2 /*return*/];
             }
@@ -2779,7 +2898,7 @@ function vegetation_monitoring(req, res) {
 }
 function get_user_layer_metadata(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var username, dbQuery, dbResponse, err_44;
+        var username, dbQuery, dbResponse, err_42;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2808,7 +2927,7 @@ function get_user_layer_metadata(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_44 = _a.sent();
+                    err_42 = _a.sent();
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2822,7 +2941,7 @@ function get_user_layer_metadata(req, res) {
 ;
 function create_layer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layername, dbQuery, dbResponse, err_45;
+        var _a, username, layername, dbQuery, dbResponse, err_43;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2849,8 +2968,8 @@ function create_layer(req, res) {
                             "function": "create_layer"
                         })];
                 case 3:
-                    err_45 = _b.sent();
-                    console.log(err_45);
+                    err_43 = _b.sent();
+                    console.log(err_43);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2863,7 +2982,7 @@ function create_layer(req, res) {
 }
 function delete_layer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var layerId, dbQuery, dbResponse, err_46;
+        var layerId, dbQuery, dbResponse, err_44;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2888,8 +3007,8 @@ function delete_layer(req, res) {
                             message: "layer deleted"
                         })];
                 case 3:
-                    err_46 = _a.sent();
-                    console.log(err_46);
+                    err_44 = _a.sent();
+                    console.log(err_44);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2902,7 +3021,7 @@ function delete_layer(req, res) {
 }
 function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_47;
+        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2938,8 +3057,8 @@ function get_layer_geoms(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_47 = _b.sent();
-                    console.log(err_47);
+                    err_45 = _b.sent();
+                    console.log(err_45);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2952,7 +3071,7 @@ function get_layer_geoms(req, res) {
 }
 function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_48;
+        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_46;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2989,8 +3108,8 @@ function update_layer_data(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_48 = _b.sent();
-                    console.log(err_48);
+                    err_46 = _b.sent();
+                    console.log(err_46);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -3035,6 +3154,7 @@ router.route('/nearest_placename').get(auth_1["default"], nearest_placename);
 router.route('/nearest_poi').get(auth_1["default"], nearest_poi);
 router.route('/nearest_bank').get(auth_1["default"], nearest_bank);
 router.route('/nearest_bank_distance').get(auth_1["default"], nearest_bank_distance);
+router.route('/nearest_waterbody').get(auth_1["default"], nearest_waterbody);
 router.route('/get_banks').get(auth_1["default"], get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth_1["default"], a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth_1["default"], a_to_b_time_distance_bike);
