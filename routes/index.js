@@ -62,7 +62,6 @@ var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
 var sentinelhub_1 = require("../assets/sentinelhub");
-var ml_savitzky_golay_1 = __importDefault(require("ml-savitzky-golay"));
 var axios_1 = __importDefault(require("axios"));
 var version = '0.8.0';
 var openLocationCode = (0, pluscodes_1["default"])();
@@ -2709,7 +2708,7 @@ function avg_NDVI(req, res) {
 ///in development
 function vegetation_monitoring(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var to_date, get_date, from_date, buff, harvest, stat_harvest, ndviMax, options, smoothing, peaks, last25Days, ndvi_trend;
+        var to_date, get_date, from_date, buff, harvest, stat_harvest, ndviMax, smoothing, peaks, trendlast15Days, valuesLast15Days, ndvi_trend;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2773,7 +2772,7 @@ function vegetation_monitoring(req, res) {
                                     noData: outputs.data.bands.B0.stats.noDataCount
                                 };
                             });
-                            console.log(stat_harvest);
+                            // console.log(stat_harvest)
                             if (stat_harvest.length < 1) {
                                 return [2 /*return*/, res.status(400).json({
                                         status: 'failure',
@@ -2782,7 +2781,7 @@ function vegetation_monitoring(req, res) {
                                     })];
                             }
                             ndviMax = stat_harvest.map(function (item) {
-                                return item.max;
+                                return item.mean;
                             });
                             if ((0, utils_1.sum)(ndviMax) == 0) {
                                 return [2 /*return*/, (res.status(400).json({
@@ -2792,25 +2791,31 @@ function vegetation_monitoring(req, res) {
                                     }))];
                             }
                             console.log(ndviMax);
-                            options = { derivative: 0 };
-                            smoothing = (0, ml_savitzky_golay_1["default"])(ndviMax, 3, options);
+                            // var options = {
+                            //   derivative: 0
+                            // };
+                            // let smoothing = savitzkyGolay(ndviMax, 2, options)
+                            ndviMax.push.apply(ndviMax, ndviMax.slice(-1));
+                            smoothing = (0, utils_1.simpleMovingAverage)(ndviMax, 2);
                             console.log(smoothing);
-                            peaks = (0, utils_1.smoothed_z_score)(smoothing, { lag: 1, influence: 0.75 });
+                            peaks = (0, utils_1.smoothed_z_score)(smoothing, { lag: 2, influence: 0.75 });
                             console.log(peaks.length + ":" + peaks.toString());
-                            last25Days = (peaks.slice(-5)).filter(Number.isFinite);
-                            console.log(last25Days);
+                            trendlast15Days = (peaks.slice(-3)).filter(Number.isFinite);
+                            console.log("trend 15 days:", trendlast15Days);
+                            valuesLast15Days = (smoothing.slice(-3));
+                            console.log("values 15 days:", valuesLast15Days);
                             ndvi_trend = {};
-                            if ((0, utils_1.mean)(last25Days) > 0.40 && (0, utils_1.sum)(peaks.slice(-4)) >= 2) {
-                                ndvi_trend = "High values of NDVI, crop/grass foliage can be fully developed";
+                            if ((0, utils_1.mean)(valuesLast15Days) > 0.40) {
+                                ndvi_trend = "Vegetation index: high values trending up, crop/grass foliage can be fully developed";
                             }
-                            else if ((0, utils_1.sum)(peaks.slice(-2)) >= 2) {
-                                ndvi_trend = "NDVI trending up";
+                            else if ((0, utils_1.sum)(trendlast15Days) >= 2) {
+                                ndvi_trend = "vegetation index: trending up";
                             }
-                            else if ((0, utils_1.sum)(peaks.slice(-3)) < 0) {
-                                ndvi_trend = "NDVI trending down";
+                            else if ((0, utils_1.sum)(trendlast15Days) < 0) {
+                                ndvi_trend = "vegeation index: trending down";
                             }
                             else
-                                ndvi_trend = "no NDVI trend identified";
+                                ndvi_trend = "vegetation index: no trend identified";
                             console.log(ndvi_trend);
                             return [2 /*return*/, res.status(200).json({
                                     status: 'success',
@@ -2874,7 +2879,7 @@ function nearest_waterbody(req, res) {
                         console.log(dbResponse.rows[0]);
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: { distance_meters: dbResponse.rows[0].dist },
+                                message: dbResponse.rows[0].dist,
                                 "function": 'nearest_waterbody'
                             })];
                     }

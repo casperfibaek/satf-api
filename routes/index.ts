@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
-import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays, toHHMMSS, sum, mean, stddev, smoothed_z_score } from './utils';
+import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays, toHHMMSS, simpleMovingAverage, sum, mean, stddev, smoothed_z_score } from './utils';
 import {
   isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
 } from './validators';
@@ -2669,7 +2669,7 @@ async function vegetation_monitoring(req:Request, res:Response) {
       }
       
     });
-    console.log(stat_harvest)
+    // console.log(stat_harvest)
     if (stat_harvest.length < 1) {
       return res.status(400).json({
       status: 'failure',
@@ -2679,7 +2679,7 @@ async function vegetation_monitoring(req:Request, res:Response) {
     }    
       //smooth the values if needed with SG smoothing
     let ndviMax = stat_harvest.map(item => {
-      return item.max
+      return item.mean
     })
     if (sum(ndviMax) == 0) {
       return (
@@ -2691,29 +2691,38 @@ async function vegetation_monitoring(req:Request, res:Response) {
       )
     }
     console.log(ndviMax)
-    let options = { derivative: 0}
-    let smoothing = savitzkyGolay(ndviMax, 3, options)
-    console.log(smoothing)
-      //identify a trending signal with smoothed_z_score
+    // var options = {
+    //   derivative: 0
+    // };
+    // let smoothing = savitzkyGolay(ndviMax, 2, options)
+
+    ndviMax.push(...ndviMax.slice(-1))
     
-    const peaks = smoothed_z_score(smoothing, {lag:1, influence: 0.75})
+    //smoothing with moving average
+    let smoothing = simpleMovingAverage(ndviMax, 2)
+    console.log(smoothing)
+  
+      //identify a trending signal with smoothed_z_score
+    const peaks = smoothed_z_score(smoothing, {lag:2, influence: 0.75})
     console.log(peaks.length +":"+peaks.toString())
     
       //translate that into parameters
-    const last25Days = (peaks.slice(-5)).filter(Number.isFinite)
-    console.log(last25Days)
+    const trendlast15Days = (peaks.slice(-3)).filter(Number.isFinite)
+    console.log("trend 15 days:", trendlast15Days)
+    const valuesLast15Days = (smoothing.slice(-3))
+    console.log("values 15 days:", valuesLast15Days)
 
     let ndvi_trend = {}
-    if (mean(last25Days) > 0.40 && sum(peaks.slice(-4)) >= 2) {
-      ndvi_trend = "High values of NDVI, crop/grass foliage can be fully developed"
-    } else if (sum(peaks.slice(-2)) >= 2) {
-        ndvi_trend = "NDVI trending up"
+    if (mean(valuesLast15Days) > 0.40) {
+      ndvi_trend = "Vegetation index: high values trending up, crop/grass foliage can be fully developed"
+    } else if (sum(trendlast15Days) >= 2) {
+        ndvi_trend = "vegetation index: trending up"
 
-    } else if (sum(peaks.slice(-3)) < 0) {
-      ndvi_trend = "NDVI trending down"
+    } else if (sum(trendlast15Days) < 0) {
+      ndvi_trend = "vegeation index: trending down"
 
     } else 
-      ndvi_trend = "no NDVI trend identified"
+      ndvi_trend = "vegetation index: no trend identified"
 
     console.log(ndvi_trend)
     return res.status(200).json({
@@ -2776,7 +2785,7 @@ async function nearest_waterbody(req:Request, res:Response) {
       console.log(dbResponse.rows[0])
       return res.status(200).json({
         status: 'success',
-        message: {distance_meters: dbResponse.rows[0].dist},
+        message: dbResponse.rows[0].dist,
         function: 'nearest_waterbody',
       } as ApiResponse);
     }

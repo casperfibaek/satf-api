@@ -3,7 +3,7 @@
   Utility functions
 */
 exports.__esModule = true;
-exports.smoothed_z_score = exports.stddev = exports.mean = exports.sum = exports.toHHMMSS = exports.subtractDays = exports.generateGeojson = exports.generatePoint = exports.translateUrbanClasses = void 0;
+exports.smoothed_z_score = exports.stddev = exports.mean = exports.sum = exports.simpleMovingAverage = exports.toHHMMSS = exports.subtractDays = exports.generateGeojson = exports.generatePoint = exports.translateUrbanClasses = void 0;
 function translateUrbanClasses(klass) {
     if (Number.isNaN(klass)) {
         return 'Unknown';
@@ -70,6 +70,22 @@ var toHHMMSS = function (secs) {
         .join(":");
 };
 exports.toHHMMSS = toHHMMSS;
+function simpleMovingAverage(array, window) {
+    if (window === void 0) { window = 5; }
+    if (!array || array.length < window) {
+        return [];
+    }
+    var index = window - 1;
+    var length = array.length + 1;
+    var simpleMovingAverages = [];
+    while (++index < length) {
+        var windowSlice = array.slice(index - window, index);
+        var sum_1 = windowSlice.reduce(function (prev, curr) { return prev + curr; }, 0);
+        simpleMovingAverages.push(sum_1 / window);
+    }
+    return simpleMovingAverages;
+}
+exports.simpleMovingAverage = simpleMovingAverage;
 function sum(a) {
     return a.reduce(function (acc, val) { return acc + val; });
 }

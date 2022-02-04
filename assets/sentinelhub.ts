@@ -496,14 +496,14 @@ function evaluatePixel(samples) {
   for (var i=0; i < samples.length; i++) {
     if (samples[i].dataMask == 1 && samples[i].SCL != 1 && samples[i].SCL != 6 && samples[i].SCL != 8 && samples[i].SCL != 9 && samples[i].B04+samples[i].B08 != 0 ){
       hasData = 1
-      var ndvi = (samples[i].B08 - samples[i].B04)/(samples[i].B08 + samples[i].B04)
-      max = ndvi > max ? ndvi:max;
+      var ndvi = (samples[i].B08 - samples[i].B04)/(samples[i].B08 + samples[i].B04);
+      // max = ndvi > max ? ndvi:max;
 
     }
   }   
-
+///changed max ndvi to ndvi
     return {
-      data: [max],
+      data: [ndvi],
       dataMask: [hasData]
     }
 }

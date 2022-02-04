@@ -64,6 +64,25 @@ export var toHHMMSS = (secs) => {
         .join(":")
 }
 
+export function simpleMovingAverage(array, window = 5) {
+  if (!array || array.length < window) {
+    return [];
+  }
+
+  let index = window - 1;
+  const length = array.length + 1;
+
+  const simpleMovingAverages = [];
+
+  while (++index < length) {
+    const windowSlice = array.slice(index - window, index);
+    const sum = windowSlice.reduce((prev, curr) => prev + curr, 0);
+    simpleMovingAverages.push(sum / window);
+  }
+
+  return simpleMovingAverages;
+}
+
 
 export function sum(a) {
     return a.reduce((acc, val) => acc + val)
