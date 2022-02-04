@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -50,9 +61,9 @@ var utils_1 = require("./utils");
 var validators_1 = require("./validators");
 var whatfreewords_1 = __importDefault(require("../assets/whatfreewords"));
 var pluscodes_1 = __importDefault(require("../assets/pluscodes"));
+var sentinelhub_1 = require("../assets/sentinelhub");
 var axios_1 = __importDefault(require("axios"));
-var os = require("os");
-var version = '0.2.2';
+var version = '0.8.0';
 var openLocationCode = (0, pluscodes_1["default"])();
 var router = express_1["default"].Router();
 var pool = new pg_1["default"].Pool(credentials_1["default"]);
@@ -320,7 +331,7 @@ function api_version(req, res) {
             // console.log(os.hostname())
             // console.log(host)
             console.log(req);
-            // api envrinoment
+            // api environment
             // os.hostname()
             return [2 /*return*/, res.status(200).json({
                     status: 'success',
@@ -524,7 +535,7 @@ function urban_status_simple(req, res) {
         });
     });
 }
-/// Not in use at the moment
+/// old population density buffer function
 function population_density_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
         var dbQuery, dbResponse, err_7;
@@ -579,7 +590,7 @@ function population_density_buffer(req, res) {
 }
 function population_buffer(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_8;
+        var dbQuery, dbResponse, resp_arr, apiResponseArr, err_8;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -597,17 +608,23 @@ function population_buffer(req, res) {
                                 "function": 'population_buffer'
                             })];
                     }
-                    dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + (Number(req.query.buffer) + 50) + "')::geometry)\n        )\n\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN --- ghana bbox\n        ( With gh_query AS(\n          SELECT \n            SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime,\n            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime,\n            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted\n\n          FROM const\n          LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(const.pp_geom, a.rast))\n          LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(const.pp_geom, b.rast))\n          LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(const.pp_geom, c.rast)))\n\n          SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))\n          FROM gh_query)\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN --- TZA bbox\n        (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n        ))).sum::int) as tza_pop\n        FROM\n          tza_ppp_2020, const\n        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n        SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))\n        FROM tza_query)\n    END as pop_buf\n  ;\n  ";
+                    dbQuery = "\n    WITH const (pp_geom) AS (\n            values (ST_Buffer(ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography, '" + (Number(req.query.buffer) + 50) + "')::geometry)\n        )\n\n    SELECT CASE \n      WHEN (SELECT geom_isghana('" + req.query.lng + "', '" + req.query.lat + "') as check_ghana) = true THEN --- ghana bbox\n        ( With gh_daytime AS(\n        SELECT \n          SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime\n          FROM ghana_pop_daytime a, const WHERE (ST_Intersects(const.pp_geom, a.rast))),\n          \n          gh_nighttime AS(\n            SELECT\n            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime\n            FROM ghana_pop_nighttime b, const WHERE (ST_Intersects(const.pp_geom, b.rast))),\n\n          gh_unweighted AS(\n            SELECT\n            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted\n            FROM ghana_pop_unweighted c, const WHERE (ST_Intersects(const.pp_geom, c.rast)))\n\n          SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))\n            FROM gh_daytime, gh_nighttime, gh_unweighted)\n\n      WHEN (SELECT geom_istza('" + req.query.lng + "', '" + req.query.lat + "') as check_tza) = true THEN --- TZA bbox\n        (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(\n          tza_ppp_2020.rast, \n          const.pp_geom\n          ))).sum::int) as tza_pop\n          FROM\n          tza_ppp_2020, const\n          WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))\n        SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))\n        FROM tza_query)\n    END as pop_buf\n  ;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
                     return [4 /*yield*/, pool.query(dbQuery)];
                 case 2:
                     dbResponse = _a.sent();
+                    resp_arr = dbResponse.rows[0].pop_buf[0];
+                    apiResponseArr = resp_arr.reduce(function (result, value, index, array) {
+                        if (index % 2 === 0)
+                            result.push(array.slice(index, index + 2));
+                        return result;
+                    }, []);
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].pop_buf,
+                                message: apiResponseArr,
                                 "function": 'population_buffer'
                             })];
                     }
@@ -810,7 +827,7 @@ function pop_density_isochrone_walk(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    isochrone = JSON.stringify(response);
+                    isochrone = JSON.stringify(response.geometry);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_walk;\n  ";
                     _a.label = 2;
                 case 2:
@@ -868,7 +885,7 @@ function pop_density_isochrone_bike(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    isochrone = JSON.stringify(response);
+                    isochrone = JSON.stringify(response.geometry);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_bike;\n  ";
                     _a.label = 2;
                 case 2:
@@ -940,7 +957,7 @@ function pop_density_isochrone_car(req, res) {
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
                     response = _a.sent();
-                    isochrone = JSON.stringify(response);
+                    isochrone = JSON.stringify(response.geometry);
                     dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
                     _a.label = 2;
                 case 2:
@@ -976,30 +993,35 @@ function pop_density_isochrone_car(req, res) {
 }
 function nightlights(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_15;
+        var profile, response, isochrone, dbQuery, dbResponse, err_15;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+                    if (!req.query.lat || !req.query.lng || !req.query.minutes) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing lat, lng or buffer',
+                                message: 'Request missing lat, lng or minutes',
                                 "function": 'nightlights'
                             })];
                     }
-                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
                                 "function": 'nightlights'
                             })];
                     }
-                    dbQuery = "\n    SELECT avg_timeseries_viirs('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.buffer) + "') as nightlight;\n  ";
-                    _a.label = 1;
+                    profile = "walking";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    isochrone = JSON.stringify(response.geometry);
+                    dbQuery = "\n    SELECT avg_timeseries_viirs_isochrone('" + isochrone + "') as nightlight;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
@@ -1013,7 +1035,7 @@ function nightlights(req, res) {
                             message: 'Error encountered on server',
                             "function": 'nightlights'
                         })];
-                case 3:
+                case 4:
                     err_15 = _a.sent();
                     console.log(err_15);
                     return [2 /*return*/, res.status(500).json({
@@ -1021,37 +1043,42 @@ function nightlights(req, res) {
                             message: 'Error encountered on server',
                             "function": 'nightlights'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
 }
 function demography(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_16;
+        var profile, response, isochrone, dbQuery, dbResponse, err_16;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+                    if (!req.query.lat || !req.query.lng || !req.query.minutes) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing lat, lng or buffer',
+                                message: 'Request missing lat, lng or minutes',
                                 "function": 'demography'
                             })];
                     }
-                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.buffer))) {
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng || Number.isNaN(req.query.minutes))) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
                                 message: 'Invalid input',
                                 "function": 'demography'
                             })];
                     }
-                    dbQuery = "\n    SELECT demography('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.buffer) + "') as demography;\n  ";
-                    _a.label = 1;
+                    profile = "walking";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
+                    response = _a.sent();
+                    isochrone = JSON.stringify(response.geometry);
+                    dbQuery = "\n    SELECT demography_isochrone('" + isochrone + "') as demography;\n  ";
+                    _a.label = 2;
                 case 2:
+                    _a.trys.push([2, 4, , 5]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 3:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
@@ -1065,7 +1092,7 @@ function demography(req, res) {
                             message: 'Error encountered on server',
                             "function": 'demography'
                         })];
-                case 3:
+                case 4:
                     err_16 = _a.sent();
                     console.log(err_16);
                     return [2 /*return*/, res.status(500).json({
@@ -1073,7 +1100,7 @@ function demography(req, res) {
                             message: 'Error encountered on server',
                             "function": 'demography'
                         })];
-                case 4: return [2 /*return*/];
+                case 5: return [2 /*return*/];
             }
         });
     });
@@ -1360,7 +1387,7 @@ function nearest_bank_distance(req, res) {
 }
 function isochrone_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_22;
+        var profile, response;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1378,34 +1405,38 @@ function isochrone_walk(req, res) {
                                 "function": 'isochrone_walk'
                             })];
                     }
-                    dbQuery = "\n    SELECT ST_AsGeoJSON(pgr_isochroneWalk('" + req.query.lng + "', '" + req.query.lat + "', '" + req.query.minutes + "'), 6) as geom;\n  ";
-                    _a.label = 1;
+                    profile = "walking";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+                        // console.log(response)
+                        // const isochrone = JSON.stringify(response.coordinates) 
+                        // const dbQuery = `
+                        //   SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
+                        // `;
+                    ];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
-                case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
+                    response = _a.sent();
+                    // console.log(response)
+                    // const isochrone = JSON.stringify(response.coordinates) 
+                    // const dbQuery = `
+                    //   SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
+                    // `;
+                    try {
+                        // const dbResponse = await pool.query(dbQuery);
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: JSON.parse(dbResponse.rows[0].geom),
+                                message: JSON.stringify(response),
                                 "function": 'isochrone_walk'
                             })];
                     }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating isocrone',
-                            "function": 'isochrone_walk'
-                        })];
-                case 3:
-                    err_22 = _a.sent();
-                    console.log(err_22);
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating isocrone',
-                            "function": 'isochrone_walk'
-                        })];
-                case 4: return [2 /*return*/];
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: "failure",
+                                message: "Error encountered on server",
+                                "function": "isochrone_walk"
+                            })];
+                    }
+                    return [2 /*return*/];
             }
         });
     });
@@ -1413,7 +1444,7 @@ function isochrone_walk(req, res) {
 // New Function - Isochrone biking distance
 function isochrone_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_23;
+        var profile, response;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1431,34 +1462,26 @@ function isochrone_bike(req, res) {
                                 "function": 'isochrone_bike'
                             })];
                     }
-                    dbQuery = "\n    SELECT ST_AsGeoJSON(pgr_isochroneBike('" + req.query.lng + "', '" + req.query.lat + "', '" + req.query.minutes + "'), 6) as geom;\n  ";
-                    _a.label = 1;
+                    profile = "cycling";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
-                case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
+                    response = _a.sent();
+                    try {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: JSON.parse(dbResponse.rows[0].geom),
+                                message: response,
                                 "function": 'isochrone_bike'
                             })];
                     }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating isocrone',
-                            "function": 'isochrone_bike'
-                        })];
-                case 3:
-                    err_23 = _a.sent();
-                    console.log(err_23);
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating isocrone',
-                            "function": 'isochrone_bike'
-                        })];
-                case 4: return [2 /*return*/];
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error while calculating isocrone',
+                                "function": 'isochrone_bike'
+                            })];
+                    }
+                    return [2 /*return*/];
             }
         });
     });
@@ -1466,7 +1489,7 @@ function isochrone_bike(req, res) {
 // New Function - Isochrone car
 function isochrone_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_24;
+        var profile, response;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1484,34 +1507,28 @@ function isochrone_car(req, res) {
                                 "function": 'isochrone_car'
                             })];
                     }
-                    dbQuery = "\n    SELECT ST_AsGeoJSON(pgr_isochroneCar('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.minutes) + "'), 6) as geom;\n  ";
-                    _a.label = 1;
+                    profile = "driving";
+                    return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, pool.query(dbQuery)];
-                case 2:
-                    dbResponse = _a.sent();
-                    if (dbResponse.rowCount > 0) {
+                    response = _a.sent();
+                    try {
+                        // const dbResponse = await pool.query(dbQuery);
+                        // if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: JSON.parse(dbResponse.rows[0].geom),
+                                message: response,
                                 "function": 'isochrone_car'
                             })];
                     }
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating isocrone',
-                            "function": 'isochrone_car'
-                        })];
-                case 3:
-                    err_24 = _a.sent();
-                    console.log(err_24);
-                    return [2 /*return*/, res.status(500).json({
-                            status: 'failure',
-                            message: 'Error while calculating isocrone',
-                            "function": 'isochrone_car'
-                        })];
-                case 4: return [2 /*return*/];
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error while calculating isocrone',
+                                "function": 'isochrone_car'
+                            })];
+                    }
+                    return [2 /*return*/];
             }
         });
     });
@@ -1538,7 +1555,7 @@ function checkUsername(username) {
 }
 function usernameExists(username) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_25;
+        var dbQuery, dbResponse, err_22;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1554,8 +1571,8 @@ function usernameExists(username) {
                     }
                     return [2 /*return*/, false];
                 case 3:
-                    err_25 = _a.sent();
-                    console.log(err_25);
+                    err_22 = _a.sent();
+                    console.log(err_22);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1564,7 +1581,7 @@ function usernameExists(username) {
 }
 function verifyUser(username, password) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_26;
+        var dbQuery, dbResponse, err_23;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1580,8 +1597,8 @@ function verifyUser(username, password) {
                     }
                     return [2 /*return*/, false];
                 case 3:
-                    err_26 = _a.sent();
-                    console.log(err_26);
+                    err_23 = _a.sent();
+                    console.log(err_23);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1590,7 +1607,7 @@ function verifyUser(username, password) {
 }
 function insertUser(username, password) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, err_27;
+        var dbQuery, err_24;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1603,8 +1620,8 @@ function insertUser(username, password) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 3:
-                    err_27 = _a.sent();
-                    console.log(err_27);
+                    err_24 = _a.sent();
+                    console.log(err_24);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1613,7 +1630,7 @@ function insertUser(username, password) {
 }
 function deleteUser(username) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, err_28;
+        var dbQuery, err_25;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1626,8 +1643,8 @@ function deleteUser(username) {
                     _a.sent();
                     return [2 /*return*/, true];
                 case 3:
-                    err_28 = _a.sent();
-                    console.log(err_28);
+                    err_25 = _a.sent();
+                    console.log(err_25);
                     return [2 /*return*/, false];
                 case 4: return [2 /*return*/];
             }
@@ -1704,7 +1721,7 @@ function create_user(req, res) {
 }
 function login_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_29;
+        var _a, username, password, hashedPassword, dbQuery, dbResponse, token, err_26;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -1754,8 +1771,8 @@ function login_user(req, res) {
                             "function": 'login_user'
                         })];
                 case 3:
-                    err_29 = _b.sent();
-                    console.log(err_29);
+                    err_26 = _b.sent();
+                    console.log(err_26);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1768,7 +1785,7 @@ function login_user(req, res) {
 }
 function login_user_get(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var username, password, hashedPassword, dbQuery, dbResponse, token, err_30;
+        var username, password, hashedPassword, dbQuery, dbResponse, token, err_27;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1819,8 +1836,8 @@ function login_user_get(req, res) {
                             "function": 'login_user'
                         })];
                 case 3:
-                    err_30 = _a.sent();
-                    console.log(err_30);
+                    err_27 = _a.sent();
+                    console.log(err_27);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1857,7 +1874,7 @@ function auth_token(token_to_verify) {
 }
 function delete_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_31, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_32;
+        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_28, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_29;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -1901,8 +1918,8 @@ function delete_user(req, res) {
                     }
                     return [3 /*break*/, 6];
                 case 5:
-                    err_31 = _b.sent();
-                    console.log(err_31);
+                    err_28 = _b.sent();
+                    console.log(err_28);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1946,8 +1963,8 @@ function delete_user(req, res) {
                     _b.label = 12;
                 case 12: return [3 /*break*/, 14];
                 case 13:
-                    err_32 = _b.sent();
-                    console.log(err_32);
+                    err_29 = _b.sent();
+                    console.log(err_29);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Internal Error while logging user in.',
@@ -1965,7 +1982,7 @@ function delete_user(req, res) {
 // Getting time and distance from A to B
 function a_to_b_time_distance_walk(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var profile, directions, err_33;
+        var profile, directions, duration, err_30;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -1990,14 +2007,16 @@ function a_to_b_time_distance_walk(req, res) {
                     return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
                     directions = _a.sent();
+                    console.log(directions.duration);
+                    duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
                             "function": "a_to_b_time_distance_walk"
                         })];
                 case 3:
-                    err_33 = _a.sent();
-                    console.log(err_33);
+                    err_30 = _a.sent();
+                    console.log(err_30);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -2011,7 +2030,7 @@ function a_to_b_time_distance_walk(req, res) {
 // A to B Biking function
 function a_to_b_time_distance_bike(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var profile, directions, err_34;
+        var profile, directions, duration, err_31;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2036,14 +2055,15 @@ function a_to_b_time_distance_bike(req, res) {
                     return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
                     directions = _a.sent();
+                    duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
                             "function": "a_to_b_time_distance_bike"
                         })];
                 case 3:
-                    err_34 = _a.sent();
-                    console.log(err_34);
+                    err_31 = _a.sent();
+                    console.log(err_31);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error while calculating time and distance',
@@ -2057,7 +2077,7 @@ function a_to_b_time_distance_bike(req, res) {
 // A to B driving function
 function a_to_b_time_distance_car(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var profile, directions, err_35;
+        var profile, directions, duration, err_32;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2082,14 +2102,15 @@ function a_to_b_time_distance_car(req, res) {
                     return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
                 case 2:
                     directions = _a.sent();
+                    duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: Math.round((directions.duration / 60) * 100) / 100, distance: Math.round((directions.distance / 1000) * 100) / 100 },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
                             "function": "a_to_b_time_distance_car"
                         })];
                 case 3:
-                    err_35 = _a.sent();
-                    console.log(err_35);
+                    err_32 = _a.sent();
+                    console.log(err_32);
                     return [2 /*return*/, res.status(500).json({
                             status: "failure",
                             message: "Error encountered on server",
@@ -2104,7 +2125,7 @@ function a_to_b_time_distance_car(req, res) {
 //1. gets coverage network from both data sources (MCE and OCI)
 function network_coverage(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_36;
+        var dbQuery, dbResponse, err_33;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2142,8 +2163,8 @@ function network_coverage(req, res) {
                             "function": 'network_coverage'
                         })];
                 case 3:
-                    err_36 = _a.sent();
-                    console.log(err_36);
+                    err_33 = _a.sent();
+                    console.log(err_33);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2157,7 +2178,7 @@ function network_coverage(req, res) {
 // 2. Gets data coverage from OCI source 
 function oci_coverage(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_37;
+        var dbQuery, dbResponse, err_34;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2195,8 +2216,8 @@ function oci_coverage(req, res) {
                             "function": 'oci_coverage'
                         })];
                 case 3:
-                    err_37 = _a.sent();
-                    console.log(err_37);
+                    err_34 = _a.sent();
+                    console.log(err_34);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2210,7 +2231,7 @@ function oci_coverage(req, res) {
 // 3. Gets data coverage from MCE source
 function mce_coverage(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, err_38;
+        var dbQuery, dbResponse, err_35;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2248,8 +2269,8 @@ function mce_coverage(req, res) {
                             "function": 'mce_coverage'
                         })];
                 case 3:
-                    err_38 = _a.sent();
-                    console.log(err_38);
+                    err_35 = _a.sent();
+                    console.log(err_35);
                     return [2 /*return*/, res.status(500).json({
                             status: 'failure',
                             message: 'Error encountered on server',
@@ -2263,7 +2284,7 @@ function mce_coverage(req, res) {
 // get weather forecats for 7 days from Open Weather api - string output for now
 function get_forecast(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var key, response, data, format_time_1, list_forecast, err_39;
+        var key, response, data_1, format_time_1, list_forecast, err_36;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2282,9 +2303,6 @@ function get_forecast(req, res) {
                             })];
                     }
                     key = "058aa5a4622d21864fcbafbb8c28a128";
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 4, , 5]);
                     return [4 /*yield*/, (0, axios_1["default"])("https://api.openweathermap.org/data/2.5/onecall?lat=" +
                             req.query.lat +
                             "&lon=" +
@@ -2292,37 +2310,55 @@ function get_forecast(req, res) {
                             "&exclude=current,minutely,hourly" +
                             "&units=metric&appid=" +
                             key)];
-                case 2:
+                case 1:
                     response = _a.sent();
+                    console.log(response.data.length);
+                    _a.label = 2;
+                case 2:
+                    _a.trys.push([2, 4, , 5]);
                     return [4 /*yield*/, response.data];
                 case 3:
-                    data = _a.sent();
-                    format_time_1 = function (s) { return new Date(s * 1e3).toISOString().slice(0, -14); };
-                    list_forecast = data.daily.map(function (props) {
-                        var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds, icon = props.icon;
-                        return {
-                            date: format_time_1(dt),
-                            description: weather[0].description,
-                            // icon: weather[0].icon,
-                            temp_min: temp.min,
-                            temp_max: temp.max,
-                            humidity: humidity,
-                            rain: rain,
-                            clouds: clouds
-                        };
-                    });
-                    return [2 /*return*/, res.status(200).json({
-                            status: "success",
-                            message: list_forecast,
-                            "function": "get_forecast"
+                    data_1 = _a.sent();
+                    console.log(data_1);
+                    if (data_1 !== '' && data_1.constructor === Object) {
+                        format_time_1 = function (s) { return new Date(s * 1e3).toISOString().slice(0, -14); };
+                        list_forecast = data_1.daily.map(function (props) {
+                            var weather = props.weather, dt = props.dt, temp = props.temp, humidity = props.humidity, rain = props.rain, clouds = props.clouds, icon = props.icon, pop = props.pop;
+                            var entry = {
+                                date: format_time_1(dt),
+                                description: weather[0].description,
+                                // icon: weather[0].icon,
+                                temp_min_c: temp.min,
+                                temp_max_c: temp.max,
+                                humidity_perc: humidity,
+                                rain_mm: rain,
+                                clouds_perc: clouds,
+                                probability_of_precipitation_perc: pop,
+                                alerts: 'no alerts'
+                            };
+                            if (data_1.alerts) {
+                                entry = __assign(__assign({}, entry), { alerts: data_1.alerts[0].event + '; ' + data_1.alerts[0].description });
+                            }
+                            return entry;
+                        });
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: list_forecast,
+                                "function": 'get_forecast'
+                            })];
+                    }
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_forecast'
                         })];
                 case 4:
-                    err_39 = _a.sent();
-                    console.log(err_39);
+                    err_36 = _a.sent();
+                    console.log(err_36);
                     return [2 /*return*/, res.status(500).json({
-                            status: "failure",
-                            message: "Error encountered on server",
-                            "function": "get_forecast"
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_forecast'
                         })];
                 case 5: return [2 /*return*/];
             }
@@ -2332,7 +2368,7 @@ function get_forecast(req, res) {
 // function to get api isochrone 
 function get_api_isochrone(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, profile, lng, lat, minutes, isochrone, err_40;
+        var _a, profile, lng, lat, minutes, isochrone, err_37;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2366,8 +2402,8 @@ function get_api_isochrone(req, res) {
                             "function": "get_isochrone"
                         })];
                 case 3:
-                    err_40 = _b.sent();
-                    console.log(err_40);
+                    err_37 = _b.sent();
+                    console.log(err_37);
                     return [2 /*return*/, res.status(500).json({
                             status: "failure",
                             message: "Error encountered on server",
@@ -2378,10 +2414,10 @@ function get_api_isochrone(req, res) {
         });
     });
 }
-// mmapbox internal isochrone function
+// mmapbox internal isochrone function - outputs properties and geometry
 function _get_isochrone(profile, lng, lat, minutes) {
     return __awaiter(this, void 0, void 0, function () {
-        var key, response, data, isochrone, err_41;
+        var key, response, data, isochrone, err_38;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2389,18 +2425,18 @@ function _get_isochrone(profile, lng, lat, minutes) {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/isochrone/v1/mapbox/" + profile + "/" + lng + "," + lat + "?contours_minutes=" + minutes + "&polygons=true&access_token=" + key)];
+                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/isochrone/v1/mapbox/" + profile + "/" + lng + "," + lat + "?contours_minutes=" + minutes + "&contours_colors=9AD4EA&polygons=true&access_token=" + key)];
                 case 2:
                     response = _a.sent();
                     return [4 /*yield*/, response.data];
                 case 3:
                     data = _a.sent();
-                    isochrone = data.features[0].geometry;
+                    isochrone = data.features[0];
                     // console.log(isochrone);
                     return [2 /*return*/, isochrone];
                 case 4:
-                    err_41 = _a.sent();
-                    console.log(err_41);
+                    err_38 = _a.sent();
+                    console.log(err_38);
                     return [3 /*break*/, 5];
                 case 5: return [2 /*return*/];
             }
@@ -2409,7 +2445,7 @@ function _get_isochrone(profile, lng, lat, minutes) {
 }
 function get_api_directions(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, profile, lng1, lat1, lng2, lat2, directions, err_42;
+        var _a, profile, lng1, lat1, lng2, lat2, directions, err_39;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -2440,8 +2476,8 @@ function get_api_directions(req, res) {
                             "function": "get_directions"
                         })];
                 case 3:
-                    err_42 = _b.sent();
-                    console.log(err_42);
+                    err_39 = _b.sent();
+                    console.log(err_39);
                     return [2 /*return*/, res.status(500).json({
                             status: "failure",
                             message: "Error encountered on server",
@@ -2454,7 +2490,7 @@ function get_api_directions(req, res) {
 }
 function _get_directions(profile, lng1, lat1, lng2, lat2) {
     return __awaiter(this, void 0, void 0, function () {
-        var key, response, data, directions, err_43;
+        var key, response, data, directions, err_40;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -2462,7 +2498,7 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 4, , 5]);
-                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/directions/v5/mapbox/" + profile + "/" + lng1 + "," + lat1 + ";" + lng2 + "," + lat2 + "?access_token=" + key)];
+                    return [4 /*yield*/, (0, axios_1["default"])("https://api.mapbox.com/directions/v5/mapbox/" + profile + "/" + lng1 + "," + lat1 + ";" + lng2 + "," + lat2 + "?overview=simplified&geometries=geojson&access_token=" + key)];
                 case 2:
                     response = _a.sent();
                     return [4 /*yield*/, response.data];
@@ -2471,26 +2507,418 @@ function _get_directions(profile, lng1, lat1, lng2, lat2) {
                     directions = data.routes[0];
                     return [2 /*return*/, directions];
                 case 4:
-                    err_43 = _a.sent();
-                    console.log(err_43);
+                    err_40 = _a.sent();
+                    console.log(err_40);
                     return [3 /*break*/, 5];
                 case 5: return [2 /*return*/];
             }
         });
     });
 }
-// Get user geometries
-// old function definition
-// app.get("/api/v1/geometries/:user_id", async (req, res) => {
-function get_user_layer_metadata(req, res) {
+// NDVI during a period of 30 days, choosing start date and end date), on a buffered area (100, 500, 1000)
+function NDVI_monthly(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var user, dbQuery, dbResponse, err_44;
+        var _a, lng, lat, to_date, from_date, buffer, buff, NDVImonthly, list_NDVImonthly;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "NDVI_monthly"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "NDVI_monthly"
+                            })];
+                    }
+                    _a = req.query, lng = _a.lng, lat = _a.lat, to_date = _a.to_date, from_date = _a.from_date, buffer = _a.buffer;
+                    console.log(lng, lat, from_date, to_date, buffer);
+                    if (req.query.buffer) {
+                        buff = Number(req.query.buffer);
+                    }
+                    else {
+                        buff = 100;
+                    }
+                    if (!(buff === 100 || buff === 500 || buff === 1000)) {
+                        return [2 /*return*/, (res.status(400).json({
+                                status: 'failure',
+                                message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+                                "function": 'NDVI_monthly'
+                            }))];
+                    }
+                    return [4 /*yield*/, (0, sentinelhub_1.monthlyNDVI)(Number(lat), Number(lng), from_date, to_date, buff)];
+                case 1:
+                    NDVImonthly = _b.sent();
+                    console.log(NDVImonthly);
+                    try {
+                        if (NDVImonthly !== '' && NDVImonthly.constructor === Object) {
+                            list_NDVImonthly = NDVImonthly.data.map(function (props) {
+                                var interval = props.interval, outputs = props.outputs;
+                                if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                                    return {
+                                        date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                                        min: 0,
+                                        max: 0,
+                                        mean: 0,
+                                        stDev: 0,
+                                        samples: "Too cloudy to retrieve data",
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                                }
+                                return {
+                                    date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                                    min: outputs.data.bands.B0.stats.min,
+                                    max: outputs.data.bands.B0.stats.max,
+                                    mean: outputs.data.bands.B0.stats.mean,
+                                    stDev: outputs.data.bands.B0.stats.stDev,
+                                    samples: outputs.data.bands.B0.stats.sampleCount,
+                                    noData: outputs.data.bands.B0.stats.noDataCount
+                                };
+                            });
+                            return [2 /*return*/, res.status(200).json({
+                                    status: 'success',
+                                    message: list_NDVImonthly,
+                                    "function": 'NDVI_monthly'
+                                })];
+                        }
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'NDVI_monthly'
+                            })];
+                    }
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'NDVI_monthly'
+                            })];
+                    }
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+// average NDVI starting from now back to specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+function avg_NDVI(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var to_date, get_date, from_date, buff, avg_ndvi, list_avgNDVI;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    user = req.params.user;
-                    console.log("fetching layer_metadata for " + user + " from database serverside");
-                    dbQuery = "With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n      From user_geometries g\n      LEFT JOIN user_layers l ON g.layer_id = l.layer_id\n      GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)\n      \n      \n      \n      SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n      FROM selection s\n      LEFT JOIN users u ON s.user_id = u.id\n      WHERE username = '" + user + "'\n      GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count\n      ;";
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "avg_NDVI"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "avg_NDVI"
+                            })];
+                    }
+                    to_date = new Date().toISOString().split('.')[0] + "Z";
+                    get_date = (0, utils_1.subtractDays)(to_date, req.query.number_days);
+                    from_date = get_date.toISOString().split('.')[0] + "Z";
+                    if (req.query.buffer) {
+                        buff = Number(req.query.buffer);
+                    }
+                    else {
+                        buff = 100;
+                    }
+                    if (!(buff === 100 || buff === 500 || buff === 1000)) {
+                        return [2 /*return*/, (res.status(400).json({
+                                status: 'failure',
+                                message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+                                "function": 'avg_NDVI'
+                            }))];
+                    }
+                    return [4 /*yield*/, (0, sentinelhub_1.avgNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)];
+                case 1:
+                    avg_ndvi = _a.sent();
+                    console.log(avg_ndvi);
+                    try {
+                        if (avg_ndvi !== '' && avg_ndvi.constructor === Object) {
+                            list_avgNDVI = avg_ndvi.data.map(function (props) {
+                                var interval = props.interval, outputs = props.outputs;
+                                console.log(outputs.data.bands);
+                                if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                                    return {
+                                        date: interval.from.split('T')[0],
+                                        min: 0,
+                                        max: 0,
+                                        mean: 0,
+                                        stDev: 0,
+                                        samples: "Too cloudy to retrieve data",
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                                }
+                                else
+                                    return {
+                                        date: interval.from.split('T')[0],
+                                        min: outputs.data.bands.B0.stats.min,
+                                        max: outputs.data.bands.B0.stats.max,
+                                        mean: outputs.data.bands.B0.stats.mean,
+                                        stDev: outputs.data.bands.B0.stats.stDev,
+                                        samples: outputs.data.bands.B0.stats.sampleCount,
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                            });
+                            if (list_avgNDVI.length < 1) {
+                                return [2 /*return*/, res.status(400).json({
+                                        status: 'failure',
+                                        message: 'No data to display, data available minimum 5 days',
+                                        "function": 'avg_NDVI'
+                                    })];
+                            }
+                            return [2 /*return*/, res.status(200).json({
+                                    status: 'success',
+                                    message: list_avgNDVI,
+                                    "function": 'avg_NDVI'
+                                })];
+                        }
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'avg_NDVI'
+                            })];
+                    }
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'avg_NDVI'
+                            })];
+                    }
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+///in development
+function vegetation_monitoring(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var to_date, get_date, from_date, buff, harvest, stat_harvest, ndviMax, smoothing, peaks, trendlast15Days, valuesLast15Days, ndvi_trend;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Request missing lat or lng",
+                                "function": "vegetation_monitoring"
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLatitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: "failure",
+                                message: "Invalid input",
+                                "function": "vegetation_monitoring"
+                            })];
+                    }
+                    to_date = new Date().toISOString().split('.')[0] + "Z";
+                    get_date = (0, utils_1.subtractDays)(to_date, 60);
+                    from_date = get_date.toISOString().split('.')[0] + "Z";
+                    if (req.query.buffer) {
+                        buff = Number(req.query.buffer);
+                    }
+                    else {
+                        buff = 100;
+                    }
+                    if (!(buff === 100 || buff === 500 || buff === 1000)) {
+                        return [2 /*return*/, (res.status(400).json({
+                                status: 'failure',
+                                message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+                                "function": 'harvest_probability'
+                            }))];
+                    }
+                    return [4 /*yield*/, (0, sentinelhub_1.maxNDVI)(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+                        // console.log(harvest.data)
+                    ];
+                case 1:
+                    harvest = _a.sent();
+                    // console.log(harvest.data)
+                    try {
+                        if (harvest !== '' && harvest.constructor === Object) {
+                            stat_harvest = harvest.data.map(function (props) {
+                                var interval = props.interval, outputs = props.outputs;
+                                if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                                    return {
+                                        date: interval.from.split('T')[0] + " to " + interval.to.split('T')[0],
+                                        min: 0,
+                                        max: 0,
+                                        mean: 0,
+                                        stDev: 0,
+                                        samples: "Too cloudy to retrieve data",
+                                        noData: outputs.data.bands.B0.stats.noDataCount
+                                    };
+                                }
+                                return {
+                                    date: interval.from.split('T')[0],
+                                    min: outputs.data.bands.B0.stats.min,
+                                    max: outputs.data.bands.B0.stats.max,
+                                    mean: outputs.data.bands.B0.stats.mean,
+                                    samples: outputs.data.bands.B0.stats.sampleCount,
+                                    noData: outputs.data.bands.B0.stats.noDataCount
+                                };
+                            });
+                            // console.log(stat_harvest)
+                            if (stat_harvest.length < 1) {
+                                return [2 /*return*/, res.status(400).json({
+                                        status: 'failure',
+                                        message: 'No data to display, data available minimum 5 days',
+                                        "function": 'vegetation_monitoring'
+                                    })];
+                            }
+                            ndviMax = stat_harvest.map(function (item) {
+                                return item.mean;
+                            });
+                            if ((0, utils_1.sum)(ndviMax) == 0) {
+                                return [2 /*return*/, (res.status(400).json({
+                                        status: 'failure',
+                                        message: 'Too cloudy to retrieve data and calculate trend',
+                                        "function": 'vegetation_monitoring'
+                                    }))];
+                            }
+                            console.log(ndviMax);
+                            // var options = {
+                            //   derivative: 0
+                            // };
+                            // let smoothing = savitzkyGolay(ndviMax, 2, options)
+                            ndviMax.push.apply(ndviMax, ndviMax.slice(-1));
+                            smoothing = (0, utils_1.simpleMovingAverage)(ndviMax, 2);
+                            console.log(smoothing);
+                            peaks = (0, utils_1.smoothed_z_score)(smoothing, { lag: 2, influence: 0.75 });
+                            console.log(peaks.length + ":" + peaks.toString());
+                            trendlast15Days = (peaks.slice(-3)).filter(Number.isFinite);
+                            console.log("trend 15 days:", trendlast15Days);
+                            valuesLast15Days = (smoothing.slice(-3));
+                            console.log("values 15 days:", valuesLast15Days);
+                            ndvi_trend = {};
+                            if ((0, utils_1.mean)(valuesLast15Days) > 0.40) {
+                                ndvi_trend = "Vegetation index: high values trending up, crop/grass foliage can be fully developed";
+                            }
+                            else if ((0, utils_1.sum)(trendlast15Days) >= 2) {
+                                ndvi_trend = "vegetation index: trending up";
+                            }
+                            else if ((0, utils_1.sum)(trendlast15Days) < 0) {
+                                ndvi_trend = "vegeation index: trending down";
+                            }
+                            else
+                                ndvi_trend = "vegetation index: no trend identified";
+                            console.log(ndvi_trend);
+                            return [2 /*return*/, res.status(200).json({
+                                    status: 'success',
+                                    message: ndvi_trend,
+                                    "function": 'vegetation_monitoring'
+                                })];
+                        }
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'vegetation_monitoring'
+                            })];
+                    }
+                    catch (err) {
+                        console.log(err);
+                        return [2 /*return*/, res.status(500).json({
+                                status: 'failure',
+                                message: 'Error encountered on server',
+                                "function": 'vegetation_monitoring'
+                            })];
+                    }
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+function nearest_waterbody(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var dbQuery, dbResponse, body_area, err_41;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.lat || !req.query.lng) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing lat or lng',
+                                "function": 'nearest_waterbody'
+                            })];
+                    }
+                    if (!(0, validators_1.isValidLatitude)(req.query.lat) || !(0, validators_1.isValidLongitude)(req.query.lng)) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Invalid input',
+                                "function": 'nearest_waterbody'
+                            })];
+                    }
+                    dbQuery = "\n    SELECT ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('" + req.query.lng + "', '" + req.query.lat + "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ";
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    body_area = {};
+                    if (dbResponse.rows[0].body_area == 0) {
+                        body_area = 'data not available'; //not active for now
+                    }
+                    else
+                        body_area = dbResponse.rows[0].body_area;
+                    if (dbResponse.rowCount > 0) {
+                        console.log(dbResponse.rows[0]);
+                        return [2 /*return*/, res.status(200).json({
+                                status: 'success',
+                                message: dbResponse.rows[0].dist,
+                                "function": 'nearest_waterbody'
+                            })];
+                    }
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'nearest_waterbody'
+                        })];
+                case 3:
+                    err_41 = _a.sent();
+                    console.log(err_41);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'nearest_waterbody'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+function get_user_layer_metadata(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var username, dbQuery, dbResponse, err_42;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.username) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username',
+                                "function": 'get_user_layer_metadata'
+                            })];
+                    }
+                    username = req.query.username;
+                    console.log(username);
+                    console.log("fetching layer_metadata for " + username + " from database serverside");
+                    dbQuery = "With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n    From user_layers l\n    LEFT JOIN user_geometries g ON l.layer_id = g.layer_id\n    GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)\n    SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n    FROM selection s\n    LEFT JOIN users u ON s.username = u.username\n    WHERE s.username = '" + username + "'\n    GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count";
+                    console.log(dbQuery);
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2504,52 +2932,114 @@ function get_user_layer_metadata(req, res) {
                     });
                     return [3 /*break*/, 4];
                 case 3:
-                    err_44 = _a.sent();
-                    console.log(err_44);
-                    return [3 /*break*/, 4];
+                    err_42 = _a.sent();
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_user_layer_metadata'
+                        })];
                 case 4: return [2 /*return*/];
             }
         });
     });
 }
 ;
+function create_layer(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, username, layername, dbQuery, dbResponse, err_43;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    if (!req.query.username || !req.query.layername) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing user id or layer name',
+                                "function": 'create_layer'
+                            })];
+                    }
+                    _a = req.query, username = _a.username, layername = _a.layername;
+                    console.log(username, layername);
+                    dbQuery = "INSERT INTO user_layers (name, username) VALUES ('" + layername + "', '" + username + "')";
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _b.sent();
+                    console.log(dbResponse);
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            message: dbResponse.rows,
+                            "function": "create_layer"
+                        })];
+                case 3:
+                    err_43 = _b.sent();
+                    console.log(err_43);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'create_layer'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
+function delete_layer(req, res) {
+    return __awaiter(this, void 0, void 0, function () {
+        var layerId, dbQuery, dbResponse, err_44;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!req.query.layerId) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing layerId',
+                                "function": 'delete_layer'
+                            })];
+                    }
+                    layerId = req.query.layerId;
+                    dbQuery = "\n    DELETE\n    FROM user_layers\n    WHERE layer_id=" + layerId;
+                    _a.label = 1;
+                case 1:
+                    _a.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _a.sent();
+                    return [2 /*return*/, res.status(200).json({
+                            status: "success",
+                            results: dbResponse.rows,
+                            message: "layer deleted"
+                        })];
+                case 3:
+                    err_44 = _a.sent();
+                    console.log(err_44);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'delete_layer'
+                        })];
+                case 4: return [2 /*return*/];
+            }
+        });
+    });
+}
 function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        function generatePoint(coords, properties) {
-            if (properties === void 0) { properties = {}; }
-            var geometry = {
-                type: 'Point',
-                coordinates: coords.slice().reverse()
-            };
-            return {
-                type: 'Feature',
-                properties: properties,
-                geometry: geometry
-            };
-        }
-        // Generate a geojson from an array
-        function generateGeojson(geometryArray, propertiesArray) {
-            var collection = {
-                type: 'FeatureCollection',
-                features: []
-            };
-            for (var i = 0; i < geometryArray.length; i += 1) {
-                var geometry = geometryArray[i];
-                var properties = propertiesArray[i] ? propertiesArray[i] : {};
-                if (typeof geometry[0] === 'number' && typeof geometry[1] === 'number' && geometry.length === 2) {
-                    collection.features.push(generatePoint(geometry, properties));
-                }
-            }
-            return collection;
-        }
-        var _a, user, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
+        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     console.log('fetching geometries from database serverside.');
-                    _a = req.params, user = _a.user, layer_id = _a.layer_id;
-                    console.log(user, layer_id);
-                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id\n    FROM user_geometries g\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\t  INNER JOIN users u ON g.user_id = u.id\n    WHERE u.username = '" + user + "' AND g.layer_id = " + layer_id + "\n    ORDER BY g.layer_id";
+                    if (!req.query.username || !req.query.layer_id) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username',
+                                "function": 'get_layer_geoms'
+                            })];
+                    }
+                    _a = req.query, username = _a.username, layer_id = _a.layer_id;
+                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name\n\n    FROM user_geometries g\n\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\n    INNER JOIN users u ON g.username = u.username\n\n    WHERE u.username = '" + username + "' AND g.layer_id = " + layer_id + "\n\n    ORDER BY g.layer_id";
                     geomBin = [];
                     propertyBin = [];
                     _b.label = 1;
@@ -2561,11 +3051,10 @@ function get_layer_geoms(req, res) {
                     console.log(dbResponse);
                     dbResponse.rows.forEach(function (row) {
                         var geom = row.geom, layer_id = row.layer_id, layer_name = row.layer_name, geom_id = row.geom_id;
-                        var _a = JSON.parse(geom).coordinates, lat = _a[0], lng = _a[1];
-                        geomBin.push([lat, lng]);
+                        geomBin.push(JSON.parse(geom).coordinates);
                         propertyBin.push({ geom_id: geom_id });
                     });
-                    geoJSON = generateGeojson(geomBin, propertyBin);
+                    geoJSON = (0, utils_1.generateGeojson)(geomBin, propertyBin);
                     console.log(geoJSON);
                     res.status(200).json({
                         status: "success",
@@ -2575,17 +3064,64 @@ function get_layer_geoms(req, res) {
                 case 3:
                     err_45 = _b.sent();
                     console.log(err_45);
-                    return [3 /*break*/, 4];
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'get_layer_geoms'
+                        })];
                 case 4: return [2 /*return*/];
             }
         });
     });
 }
-;
-function send_geoms(req, res) {
+function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            return [2 /*return*/];
+        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_46;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0:
+                    console.log(req.query.username, req.query.layerId);
+                    if (!req.query.username || !req.query.layerId) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing username or layerId',
+                                "function": 'update_layer_data'
+                            })];
+                    }
+                    else if (!req.body.featureCollection) {
+                        return [2 /*return*/, res.status(400).json({
+                                status: 'failure',
+                                message: 'Request missing featureCollection in body',
+                                "function": 'update_layer_data'
+                            })];
+                    }
+                    _a = req.query, username = _a.username, layerId = _a.layerId;
+                    featureCollection = req.body.featureCollection;
+                    console.log(featureCollection);
+                    values = featureCollection.features.map(function (f) { return "('" + layerId + "' ,'" + username + "', ST_GeomFromGeoJSON('" + JSON.stringify(f.geometry) + "'))"; });
+                    dbQuery = "INSERT INTO user_geometries (layer_id, username, geom) VALUES " + values.join(",");
+                    console.log(dbQuery);
+                    _b.label = 1;
+                case 1:
+                    _b.trys.push([1, 3, , 4]);
+                    return [4 /*yield*/, pool.query(dbQuery)];
+                case 2:
+                    dbResponse = _b.sent();
+                    res.status(200).json({
+                        status: "success",
+                        results: dbResponse.rows
+                    });
+                    return [3 /*break*/, 4];
+                case 3:
+                    err_46 = _b.sent();
+                    console.log(err_46);
+                    return [2 /*return*/, res.status(500).json({
+                            status: 'failure',
+                            message: 'Error encountered on server',
+                            "function": 'update_layer_data'
+                        })];
+                case 4: return [2 /*return*/];
+            }
         });
     });
 }
@@ -2611,7 +3147,7 @@ router.route('/isochrone_bike').get(auth_1["default"], isochrone_bike);
 router.route('/isochrone_car').get(auth_1["default"], isochrone_car);
 router.route('/nightlights').get(auth_1["default"], nightlights);
 router.route('/demography').get(auth_1["default"], demography);
-// router.route('/population_density_buffer').get(auth, population_density_buffer);
+router.route('/population_density_buffer').get(auth_1["default"], population_density_buffer);
 router.route('/population_buffer').get(auth_1["default"], population_buffer);
 router.route('/urban_status').get(auth_1["default"], urban_status);
 router.route('/urban_status_simple').get(auth_1["default"], urban_status_simple);
@@ -2623,6 +3159,7 @@ router.route('/nearest_placename').get(auth_1["default"], nearest_placename);
 router.route('/nearest_poi').get(auth_1["default"], nearest_poi);
 router.route('/nearest_bank').get(auth_1["default"], nearest_bank);
 router.route('/nearest_bank_distance').get(auth_1["default"], nearest_bank_distance);
+router.route('/nearest_waterbody').get(auth_1["default"], nearest_waterbody);
 router.route('/get_banks').get(auth_1["default"], get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth_1["default"], a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth_1["default"], a_to_b_time_distance_bike);
@@ -2638,11 +3175,18 @@ router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
-router.route('/send_geoms').post(send_geoms);
-router.route('/get_user_layer_metadata/:user').get(get_user_layer_metadata);
-router.route('/get_layer_geoms/:user/:layer_id').get(get_layer_geoms);
-// router.route('/send_to_DB/:user_id').post(send_to_DB);
-// router.route('/get_user_geometries/:user_id').get(get_user_geometries);
+//agriculture functions
+router.route('/NDVI_monthly').get(auth_1["default"], NDVI_monthly);
+router.route('/avg_NDVI').get(auth_1["default"], avg_NDVI);
+//in development 
+router.route('/vegetation_monitoring').get(auth_1["default"], vegetation_monitoring);
+// finished
+router.route('/get_user_layer_metadata').get(get_user_layer_metadata);
+router.route('/get_layer_geoms').get(get_layer_geoms);
+router.route('/delete_layer').get(delete_layer);
+// in development
+router.route('/update_layer_data').post(update_layer_data);
+router.route('/create_layer').post(create_layer);
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth_1["default"], function (req, res) { return res.send('home/api/batch'); });
 exports["default"] = router;

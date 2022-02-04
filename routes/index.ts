@@ -5,19 +5,25 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import auth from './auth';
 import credentials from './credentials';
-import { translateUrbanClasses } from './utils';
+import { translateUrbanClasses, generatePoint, generateGeojson, subtractDays, toHHMMSS, simpleMovingAverage, sum, mean, stddev, smoothed_z_score } from './utils';
 import {
   isValidLatitude, isValidLongitude, isValidPluscode, isValidWhatFreeWords,
 } from './validators';
 import Wfw from '../assets/whatfreewords';
 import Pluscodes from '../assets/pluscodes';
 import { callbackify } from 'util';
+import { maxNDVI, monthlyNDVI, avgNDVI } from '../assets/sentinelhub';
 
+import buffer from '@turf/buffer';
+import { point } from '@turf/helpers';
+import bbox from '@turf/bbox';
+import area from '@turf/area';
+import savitzkyGolay from 'ml-savitzky-golay';
 import axios from "axios"
+// import fetch from 'node-fetch';
+import { timeStamp } from 'console';
 
-const os = require("os")
-
-const version = '0.2.2';
+const version = '0.8.0';
 
 interface ApiResponse {
   status: 'failure' |'success',
@@ -275,8 +281,9 @@ async function api_version(req:Request, res:Response) {
   // console.log(os.hostname())
   // console.log(host)
   console.log(req)
-  // api envrinoment
+  // api environment
   // os.hostname()
+ 
 
   return res.status(200).json({
     status: 'success',
@@ -458,7 +465,7 @@ async function urban_status_simple(req:Request, res:Response) {
     } as ApiResponse);
   }
 }
-/// Not in use at the moment
+/// old population density buffer function
 async function population_density_buffer(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng || !req.query.buffer) {
     return res.status(400).json({
@@ -539,27 +546,32 @@ async function population_buffer(req:Request, res:Response) {
 
     SELECT CASE 
       WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN --- ghana bbox
-        ( With gh_query AS(
-          SELECT 
-            SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime,
-            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime,
-            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted
+        ( With gh_daytime AS(
+        SELECT 
+          SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime
+          FROM ghana_pop_daytime a, const WHERE (ST_Intersects(const.pp_geom, a.rast))),
+          
+          gh_nighttime AS(
+            SELECT
+            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime
+            FROM ghana_pop_nighttime b, const WHERE (ST_Intersects(const.pp_geom, b.rast))),
 
-          FROM const
-          LEFT JOIN ghana_pop_daytime a ON (ST_Intersects(const.pp_geom, a.rast))
-          LEFT JOIN ghana_pop_nighttime b ON (ST_Intersects(const.pp_geom, b.rast))
-          LEFT JOIN ghana_pop_unweighted c ON (ST_Intersects(const.pp_geom, c.rast)))
+          gh_unweighted AS(
+            SELECT
+            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted
+            FROM ghana_pop_unweighted c, const WHERE (ST_Intersects(const.pp_geom, c.rast)))
 
           SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))
-          FROM gh_query)
+            FROM gh_daytime, gh_nighttime, gh_unweighted)
+
       WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN --- TZA bbox
         (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(
           tza_ppp_2020.rast, 
           const.pp_geom
-        ))).sum::int) as tza_pop
-        FROM
+          ))).sum::int) as tza_pop
+          FROM
           tza_ppp_2020, const
-        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
+          WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
         SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))
         FROM tza_query)
     END as pop_buf
@@ -568,11 +580,20 @@ async function population_buffer(req:Request, res:Response) {
 
   try {
     const dbResponse = await pool.query(dbQuery);
+    const resp_arr = dbResponse.rows[0].pop_buf[0]
     
+
+   const apiResponseArr = resp_arr.reduce(function(result, value, index, array) {
+    if (index % 2 === 0)
+      result.push(array.slice(index, index + 2));
+    return result;
+  }, []);
+
+
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: dbResponse.rows[0].pop_buf,
+        message: apiResponseArr,
         function: 'population_buffer',
       } as ApiResponse);
     }
@@ -827,7 +848,7 @@ async function pop_density_isochrone_walk(req:Request, res:Response) {
   const profile = "walking"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
  
-  const isochrone = JSON.stringify(response) 
+  const isochrone = JSON.stringify(response.geometry) 
 
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_walk;
@@ -879,7 +900,7 @@ async function pop_density_isochrone_bike(req:Request, res:Response) {
   const profile = "cycling"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
 
-  const isochrone = JSON.stringify(response) 
+  const isochrone = JSON.stringify(response.geometry) 
 
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_bike;
@@ -947,7 +968,7 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
   const profile = "driving"
   const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
  
-  const isochrone = JSON.stringify(response) 
+  const isochrone = JSON.stringify(response.geometry) 
 
   const dbQuery = `
     SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('${isochrone}')) as pop_api_iso_car;
@@ -980,23 +1001,28 @@ async function pop_density_isochrone_car(req:Request, res:Response) {
 }
 
 async function nightlights(req:Request, res:Response) {
-  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+  if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing lat, lng or buffer',
+      message: 'Request missing lat, lng or minutes',
       function: 'nightlights',
     } as ApiResponse);
   }
 
-  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
       function: 'nightlights',
     } as ApiResponse);
   }
+  const profile = "walking"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+ 
+  const isochrone = JSON.stringify(response.geometry) 
+ 
   const dbQuery = `
-    SELECT avg_timeseries_viirs('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as nightlight;
+    SELECT avg_timeseries_viirs_isochrone('${isochrone}') as nightlight;
   `;
 
   try {
@@ -1024,27 +1050,34 @@ async function nightlights(req:Request, res:Response) {
 }
 
 async function demography(req:Request, res:Response) {
-  if (!req.query.lat || !req.query.lng || !req.query.buffer) {
+  if (!req.query.lat || !req.query.lng || !req.query.minutes) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing lat, lng or buffer',
+      message: 'Request missing lat, lng or minutes',
       function: 'demography',
     } as ApiResponse);
   }
 
-  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.buffer))) {
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng || Number.isNaN(req.query.minutes))) {
     return res.status(400).json({
       status: 'failure',
       message: 'Invalid input',
       function: 'demography',
     } as ApiResponse);
   }
+
+  const profile = "walking"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+ 
+  const isochrone = JSON.stringify(response.geometry) 
+  // console.log(isochrone)
   const dbQuery = `
-    SELECT demography('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as demography;
+    SELECT demography_isochrone('${isochrone}') as demography;
   `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
+  
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
@@ -1353,30 +1386,30 @@ async function isochrone_walk(req:Request, res:Response) {
   }
 
   // function creating an isochrone of walking distance
-  const dbQuery = `
-    SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
-  `;
+
+    const profile = "walking"
+    const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
+    // console.log(response)
+    // const isochrone = JSON.stringify(response.coordinates) 
+
+  // const dbQuery = `
+  //   SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
+  // `;
 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
+    // const dbResponse = await pool.query(dbQuery);
       return res.status(200).json({
         status: 'success',
-        message: JSON.parse(dbResponse.rows[0].geom),
+        message: JSON.stringify(response),
         function: 'isochrone_walk',
       } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_walk',
-    } as ApiResponse);
-  } catch (err) {
+    } catch (err) {
     console.log(err);
+
     return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_walk',
+      status: "failure",
+      message: "Error encountered on server",
+      function: "isochrone_walk",
     } as ApiResponse);
   }
 }
@@ -1399,24 +1432,18 @@ async function isochrone_bike(req:Request, res:Response) {
   }
 
   // function creating an isochrone of biking distance
-  const dbQuery = `
-    SELECT ST_AsGeoJSON(pgr_isochroneBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
-  `;
+  // const dbQuery = `
+  //   SELECT ST_AsGeoJSON(pgr_isochroneBike('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
+  // `;
+    const profile = "cycling"
+    const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: JSON.parse(dbResponse.rows[0].geom),
+        message: response,
         function: 'isochrone_bike',
       } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_bike',
-    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1445,24 +1472,21 @@ async function isochrone_car(req:Request, res:Response) {
   }
 
   // function creating an isochrone of driving distance
-  const dbQuery = `
-    SELECT ST_AsGeoJSON(pgr_isochroneCar('${req.query.lng}', '${req.query.lat}', '${Number(req.query.minutes)}'), 6) as geom;
-  `;
+  // const dbQuery = `
+  //   SELECT ST_AsGeoJSON(pgr_isochroneCar('${req.query.lng}', '${req.query.lat}', '${Number(req.query.minutes)}'), 6) as geom;
+  // `;
+
+  const profile = "driving"
+  const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
 
   try {
-    const dbResponse = await pool.query(dbQuery);
-    if (dbResponse.rowCount > 0) {
+    // const dbResponse = await pool.query(dbQuery);
+    // if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: JSON.parse(dbResponse.rows[0].geom),
+        message: response,
         function: 'isochrone_car',
       } as ApiResponse);
-    }
-    return res.status(500).json({
-      status: 'failure',
-      message: 'Error while calculating isocrone',
-      function: 'isochrone_car',
-    } as ApiResponse);
   } catch (err) {
     console.log(err);
     return res.status(500).json({
@@ -1888,10 +1912,12 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
     try {
 
   const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+  console.log(directions.duration)
+  const duration = toHHMMSS(directions.duration)
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_walk",
     } as ApiResponse);
   // function without output of minutes and distance in meters from A to B
@@ -1947,10 +1973,12 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
   try {
 
   const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+  
+  const duration = toHHMMSS(directions.duration)
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_bike",
     } as ApiResponse);
 
@@ -2002,10 +2030,12 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
   try {
 
   const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+  
+  const duration = toHHMMSS(directions.duration)
 
       return res.status(200).json({
       status: "success",
-      message: { time: Math.round((directions.duration/60)*100)/100, distance: Math.round((directions.distance/1000)*100)/100 },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
       function: "a_to_b_time_distance_car",
     } as ApiResponse);
  
@@ -2191,47 +2221,64 @@ async function get_forecast(req: Request, res: Response) {
     } as ApiResponse);
   }
   var key = "058aa5a4622d21864fcbafbb8c28a128";
+  const response = await axios(
+    "https://api.openweathermap.org/data/2.5/onecall?lat=" +
+      req.query.lat +
+      "&lon=" +
+      req.query.lng + 
+      "&exclude=current,minutely,hourly" +
+      "&units=metric&appid=" +
+      key
+  );
+  console.log(response.data.length)
   try {
-    const response = await axios(
-      "https://api.openweathermap.org/data/2.5/onecall?lat=" +
-        req.query.lat +
-        "&lon=" +
-        req.query.lng + 
-        "&exclude=current,minutely,hourly" +
-        "&units=metric&appid=" +
-        key
-    );
     const data = await response.data;
-
+    console.log(data)
+    if (data !== '' && data.constructor === Object) {
     const format_time = (s) => new Date(s * 1e3).toISOString().slice(0,-14);
 
-    const list_forecast = data.daily.map(( props ) => {
-      const { weather, dt, temp, humidity, rain, clouds, icon } = props
-      return {
+    let list_forecast = data.daily.map(( props ) => {
+      const { weather, dt, temp, humidity, rain, clouds, icon, pop } = props
+      
+      let entry = {
         date: format_time(dt),
         description: weather[0].description,
         // icon: weather[0].icon,
-        temp_min: temp.min, 
-        temp_max: temp.max,
-        humidity,
-        rain,
-        clouds
-
+        temp_min_c: temp.min, 
+        temp_max_c: temp.max,
+        humidity_perc: humidity,
+        rain_mm: rain,
+        clouds_perc: clouds,
+        probability_of_precipitation_perc: pop,
+        alerts: 'no alerts'
       } 
-    }); 
+      if (data.alerts) {
+      entry = {
+        ...entry,
+        alerts: data.alerts[0].event + '; ' + data.alerts[0].description
+    }
+  } 
+
+      return entry
+    });
 
     return res.status(200).json({
-      status: "success",
+      status: 'success',
       message: list_forecast,
-      function: "get_forecast",
+      function: 'get_forecast',
+    } as ApiResponse);
+  }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'get_forecast',
     } as ApiResponse);
   } catch (err) {
     console.log(err);
-
     return res.status(500).json({
-      status: "failure",
-      message: "Error encountered on server",
-      function: "get_forecast",
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'get_forecast',
     } as ApiResponse);
   }
 }
@@ -2256,14 +2303,12 @@ async function get_api_isochrone(req, res) {
   }
 
   const {profile, lng, lat, minutes} = req.query
-  try {
 
+  try {
 
   const isochrone = await _get_isochrone(profile, lng, lat, minutes)
 
   // console.log(isochrone)
-
-
 
       return res.status(200).json({
       status: "success",
@@ -2282,7 +2327,7 @@ async function get_api_isochrone(req, res) {
 
 }
 
-// mmapbox internal isochrone function
+// mmapbox internal isochrone function - outputs properties and geometry
 
 async function _get_isochrone(profile, lng, lat, minutes) {
 
@@ -2292,10 +2337,10 @@ async function _get_isochrone(profile, lng, lat, minutes) {
     // const time_min = minutes*60
 
     const response = await axios(
-      "https://api.mapbox.com/isochrone/v1/mapbox/"+ profile + "/" + lng + "," + lat + "?contours_minutes="+ minutes + "&polygons=true&access_token=" + key);
+      "https://api.mapbox.com/isochrone/v1/mapbox/"+ profile + "/" + lng + "," + lat + "?contours_minutes="+ minutes + "&contours_colors=9AD4EA&polygons=true&access_token=" + key);
     const data = await response.data;
-    
-    const isochrone = data.features[0].geometry;
+
+    const isochrone = data.features[0];
 
     // console.log(isochrone);
     
@@ -2357,11 +2402,11 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
     // const time_min = minutes*60
 
     const response = await axios(
-      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?access_token=" + key);
+      "https://api.mapbox.com/directions/v5/mapbox/"+ profile + "/" + lng1 + "," + lat1 + ";"+ lng2 + "," + lat2 + "?overview=simplified&geometries=geojson&access_token=" + key);
     const data = await response.data;
     
     const directions = data.routes[0];
-    
+
     return directions
     }
   
@@ -2370,103 +2415,552 @@ async function _get_directions(profile, lng1, lat1, lng2, lat2) {
   }
   
 }
+// NDVI during a period of 30 days, choosing start date and end date), on a buffered area (100, 500, 1000)
+async function NDVI_monthly(req:Request, res:Response) {
+     if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "NDVI_monthly",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "NDVI_monthly",
+    } as ApiResponse);
+  }
+  const {lng, lat, to_date, from_date, buffer} = req.query
+  console.log(lng, lat, from_date, to_date, buffer)
 
-// Get user geometries
-// old function definition
-// app.get("/api/v1/geometries/:user_id", async (req, res) => {
-  async function get_user_layer_metadata(req:Request, res:Response) {
+  // const startString = new Date(Number(year), Number(start_month)-1, 1, 15, 0, 0, 0)
+  // const endString = new Date(Number(year), Number(end_month), 0, 15, 0, 0, 0);
 
-    let { user } = req.params
+  // const start_date = from_date.toISOString().split('T')[0]
+  // const end_date = to_date.toISOString().split('T')[0]
+
+  let buff;
+  if (req.query.buffer) {
+    buff = Number(req.query.buffer)
+  } else {
+    buff = 100
+  }
+
+  if (!(buff === 100 || buff === 500 || buff === 1000)) {
+      return (
+        res.status(400).json({
+          status: 'failure',
+          message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+          function: 'NDVI_monthly',
+    })
+      )
+  }
+  
+  const NDVImonthly = await monthlyNDVI(Number(lat), Number(lng), from_date, to_date, buff)
+  console.log(NDVImonthly)
+  try {
+    if (NDVImonthly !== '' && NDVImonthly.constructor === Object) {
+      let list_NDVImonthly = NDVImonthly.data.map((props) => {
+        const {interval, outputs} = props
+        if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+          return {
+            date: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
+            min: 0,
+            max: 0,
+            mean: 0,
+            stDev: 0,
+            samples: "Too cloudy to retrieve data",
+            noData: outputs.data.bands.B0.stats.noDataCount
+            }
+        }
+         return {
+          date: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
+          min: outputs.data.bands.B0.stats.min,
+          max: outputs.data.bands.B0.stats.max,
+          mean: outputs.data.bands.B0.stats.mean,
+          stDev: outputs.data.bands.B0.stats.stDev,
+          samples: outputs.data.bands.B0.stats.sampleCount,
+          noData: outputs.data.bands.B0.stats.noDataCount
+        }
     
-    console.log(`fetching layer_metadata for ${user} from database serverside`)
+      });
+
+    return res.status(200).json({
+      status: 'success',
+      message: list_NDVImonthly,
+      function: 'NDVI_monthly',
+    } as ApiResponse);
+  }
+  return res.status(500).json({
+    status: 'failure',
+    message: 'Error encountered on server',
+    function: 'NDVI_monthly',
+  } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'NDVI_monthly',
+    } as ApiResponse);
+  }
+}
 
 
-    const dbQuery = 
-      `With selection AS(SELECT g.user_id, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
-      From user_geometries g
-      LEFT JOIN user_layers l ON g.layer_id = l.layer_id
-      GROUP BY g.user_id, l.layer_id, l.name, l.created_on, l.last_updated)
+// average NDVI starting from now back to specified number of days, specifying a point (lat, lng), that is transformed into a bounding box based on a defined buffer (100 [default], 500, 1000)
+async function avg_NDVI(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "avg_NDVI",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "avg_NDVI",
+    } as ApiResponse);
+  }
+  const to_date = new Date().toISOString().split('.')[0]+"Z" 
+
+  const get_date = subtractDays(to_date, req.query.number_days)
+  const from_date = get_date.toISOString().split('.')[0]+"Z"
+
+  let buff;
+  if (req.query.buffer) {
+    buff = Number(req.query.buffer)
+  } else {
+    buff = 100
+  }
+
+  if (!(buff === 100 || buff === 500 || buff === 1000)) {
+    return (res.status(400).json({
+      status: 'failure',
+      message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+      function: 'avg_NDVI',
+    }))
+  }
+  const avg_ndvi = await avgNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+  console.log(avg_ndvi)
+
+  try {
+    if (avg_ndvi !== '' && avg_ndvi.constructor === Object) {
+    let list_avgNDVI = avg_ndvi.data.map((props) => {
+      const {interval, outputs} = props
+      console.log(outputs.data.bands)
+      if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+       return {
+         date: interval.from.split('T')[0],
+         min: 0,
+         max: 0,
+         mean: 0,
+         stDev: 0,
+         samples: "Too cloudy to retrieve data",
+         noData: outputs.data.bands.B0.stats.noDataCount
+        }
+      }
+      else 
+
+       return {
+        date: interval.from.split('T')[0],
+        min: outputs.data.bands.B0.stats.min,
+        max: outputs.data.bands.B0.stats.max,
+        mean: outputs.data.bands.B0.stats.mean,
+        stDev: outputs.data.bands.B0.stats.stDev,
+        samples: outputs.data.bands.B0.stats.sampleCount,
+        noData: outputs.data.bands.B0.stats.noDataCount
+      }
       
+    });
+    
+    if (list_avgNDVI.length < 1) {
+      return res.status(400).json({
+      status: 'failure',
+      message: 'No data to display, data available minimum 5 days',
+      function: 'avg_NDVI',
+    });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: list_avgNDVI,
+      function: 'avg_NDVI',
+    } as ApiResponse);
+  }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'avg_NDVI',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'avg_NDVI',
+    } as ApiResponse);
+  }
+}
+
+///in development
+async function vegetation_monitoring(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Request missing lat or lng",
+      function: "vegetation_monitoring",
+    } as ApiResponse);
+  }
+  if (!isValidLatitude(req.query.lat) || !isValidLatitude(req.query.lng)) {
+    return res.status(400).json({
+      status: "failure",
+      message: "Invalid input",
+      function: "vegetation_monitoring",
+    } as ApiResponse);
+  }
+  const to_date = new Date().toISOString().split('.')[0]+"Z" 
+
+  const get_date = subtractDays(to_date, 60)
+  const from_date = get_date.toISOString().split('.')[0]+"Z"
+
+  let buff;
+  if (req.query.buffer) {
+    buff = Number(req.query.buffer)
+  } else {
+    buff = 100
+  }
+
+  if (!(buff === 100 || buff === 500 || buff === 1000)) {
+    return (res.status(400).json({
+      status: 'failure',
+      message: 'ValueError: buffer is not valid, choose between 100 (default), 500 or 1000 meters ',
+      function: 'harvest_probability',
+    }))
+  }
+
+  const harvest = await maxNDVI(Number(req.query.lat), Number(req.query.lng), to_date, from_date, buff)
+  // console.log(harvest.data)
+  try {
+    if (harvest !== '' && harvest.constructor === Object) {
+    let stat_harvest = harvest.data.map((props) => {
+      const {interval, outputs} = props
+      if (outputs.data.bands.B0.stats.sampleCount == outputs.data.bands.B0.stats.noDataCount) {
+                return {
+            date: interval.from.split('T')[0]+" to "+interval.to.split('T')[0],
+            min: 0,
+            max: 0,
+            mean: 0,
+            stDev: 0,
+            samples: "Too cloudy to retrieve data",
+            noData: outputs.data.bands.B0.stats.noDataCount
+            }
+        }
       
+      return {
+        date: interval.from.split('T')[0],
+        min: outputs.data.bands.B0.stats.min,
+        max: outputs.data.bands.B0.stats.max,
+        mean: outputs.data.bands.B0.stats.mean,
+        samples: outputs.data.bands.B0.stats.sampleCount,
+        noData: outputs.data.bands.B0.stats.noDataCount
+      }
       
-      SELECT s.user_id as user_id, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
-      FROM selection s
-      LEFT JOIN users u ON s.user_id = u.id
-      WHERE username = '${user}'
-      GROUP BY s.layer_id, s.user_id, s.name, s.created_on, s.last_updated, s.count
-      ;`
+    });
+    // console.log(stat_harvest)
+    if (stat_harvest.length < 1) {
+      return res.status(400).json({
+      status: 'failure',
+      message: 'No data to display, data available minimum 5 days',
+      function: 'vegetation_monitoring',
+    });
+    }    
+      //smooth the values if needed with SG smoothing
+    let ndviMax = stat_harvest.map(item => {
+      return item.mean
+    })
+    if (sum(ndviMax) == 0) {
+      return (
+        res.status(400).json({
+          status: 'failure',
+          message: 'Too cloudy to retrieve data and calculate trend',
+          function: 'vegetation_monitoring',
+      })
+      )
+    }
+    console.log(ndviMax)
+    // var options = {
+    //   derivative: 0
+    // };
+    // let smoothing = savitzkyGolay(ndviMax, 2, options)
+
+    ndviMax.push(...ndviMax.slice(-1))
+    
+    //smoothing with moving average
+    let smoothing = simpleMovingAverage(ndviMax, 2)
+    console.log(smoothing)
+  
+      //identify a trending signal with smoothed_z_score
+    const peaks = smoothed_z_score(smoothing, {lag:2, influence: 0.75})
+    console.log(peaks.length +":"+peaks.toString())
+    
+      //translate that into parameters
+    const trendlast15Days = (peaks.slice(-3)).filter(Number.isFinite)
+    console.log("trend 15 days:", trendlast15Days)
+    const valuesLast15Days = (smoothing.slice(-3))
+    console.log("values 15 days:", valuesLast15Days)
+
+    let ndvi_trend = {}
+    if (mean(valuesLast15Days) > 0.40) {
+      ndvi_trend = "Vegetation index: high values trending up, crop/grass foliage can be fully developed"
+    } else if (sum(trendlast15Days) >= 2) {
+        ndvi_trend = "vegetation index: trending up"
+
+    } else if (sum(trendlast15Days) < 0) {
+      ndvi_trend = "vegeation index: trending down"
+
+    } else 
+      ndvi_trend = "vegetation index: no trend identified"
+
+    console.log(ndvi_trend)
+    return res.status(200).json({
+      status: 'success',
+      message: ndvi_trend,
+      function: 'vegetation_monitoring',
+    } as ApiResponse);
+  }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'vegetation_monitoring',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'vegetation_monitoring',
+    } as ApiResponse);
+  }
+}
+
+
+async function nearest_waterbody(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat or lng',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
+  }
+
+  const dbQuery = `
+    SELECT ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('${req.query.lng}', '${req.query.lat}')::geography, 4326))::numeric, 2) as dist, 
+    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area
+    FROM gh_tz_waterbodies w
+    ORDER BY dist
+    LIMIT 1;
+  `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
-    console.log(dbResponse)
-    res.status(200).json({
-      status: "success",
-      results: dbResponse.rows,
-    });
+    let body_area = {}
+    if (dbResponse.rows[0].body_area == 0) {
+      body_area = 'data not available'; //not active for now
+    }
+    else
+      body_area = dbResponse.rows[0].body_area
+    if (dbResponse.rowCount > 0) {
+      console.log(dbResponse.rows[0])
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].dist,
+        function: 'nearest_waterbody',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
   } catch (err) {
     console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_waterbody',
+    } as ApiResponse);
   }
-};
+}
+
+async function get_user_layer_metadata(req:Request, res:Response) {
+
+  if (!req.query.username) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing username',
+      function: 'get_user_layer_metadata',
+    } as ApiResponse);
+  }
+
+  
+
+  const { username } = req.query
+  
+  console.log(username)
+
+  console.log(`fetching layer_metadata for ${username} from database serverside`)
+
+
+  const dbQuery = 
+    `With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated
+    From user_layers l
+    LEFT JOIN user_geometries g ON l.layer_id = g.layer_id
+    GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)
+    SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated
+    FROM selection s
+    LEFT JOIN users u ON s.username = u.username
+    WHERE s.username = '${username}'
+    GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count`
+
+  console.log(dbQuery)
+
+try {
+  const dbResponse = await pool.query(dbQuery);
+  console.log(dbResponse)
+  res.status(200).json({
+    status: "success",
+    results: dbResponse.rows,
+  });
+} catch (err) {
+  return res.status(500).json({
+    status: 'failure',
+    message: 'Error encountered on server',
+    function: 'get_user_layer_metadata',
+  } as ApiResponse);
+}
+}
+;
+
+async function create_layer(req:Request, res:Response) {
+  if (!req.query.username || !req.query.layername ) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing user id or layer name',
+      function: 'create_layer',
+    } as ApiResponse);
+  }
+
+  const { username, layername } = req.query
+  console.log(username, layername)
+  const dbQuery = `INSERT INTO user_layers (name, username) VALUES ('${layername}', '${username}')`
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+  console.log(dbResponse)
+
+    return res.status(200).json({
+      status: "success",
+      message: dbResponse.rows,
+      function: "create_layer",
+    } as ApiResponse);
+  }
+  catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'create_layer',
+    } as ApiResponse);
+  }
+}
+
+async function delete_layer(req:Request, res:Response) {
+  if (!req.query.layerId) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing layerId',
+      function: 'delete_layer',
+    } as ApiResponse);
+  }
+  
+  const { layerId } = req.query
+
+  const dbQuery = `
+    DELETE
+    FROM user_layers
+    WHERE layer_id=${layerId}`
+    try {
+      const dbResponse = await pool.query(dbQuery);
+      return res.status(200).json({
+        status: "success",
+        results: dbResponse.rows,
+        message: "layer deleted"
+    });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({
+        status: 'failure',
+        message: 'Error encountered on server',
+        function: 'delete_layer',
+      } as ApiResponse);
+    }
+    
+}
+
 
 async function get_layer_geoms(req:Request, res:Response) {
-  
-  function generatePoint(coords:number[], properties:any = {}) {
-    const geometry = {
-      type: 'Point',
-      coordinates: coords.slice().reverse(),
-    };
-  
-    return {
-      type: 'Feature',
-      properties,
-      geometry,
-    };
-  }
-  
-  // Generate a geojson from an array
-  function generateGeojson(geometryArray:number[][], propertiesArray:any[]) {
-    const collection = {
-      type: 'FeatureCollection',
-      features: [],
-    };
-  
-    for (let i = 0; i < geometryArray.length; i += 1) {
-      const geometry = geometryArray[i];
-      const properties = propertiesArray[i] ? propertiesArray[i] : {};
-  
-      if (typeof geometry[0] === 'number' && typeof geometry[1] === 'number' && geometry.length === 2) {
-        collection.features.push(generatePoint(geometry, properties));
-      }
-    }
-  
-    return collection;
-  }
 
 
   console.log('fetching geometries from database serverside.')
-  const { user, layer_id } = req.params
-  console.log(user, layer_id)
+
+  if (!req.query.username || !req.query.layer_id) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing username',
+      function: 'get_layer_geoms',
+    } as ApiResponse);
+  }
+  
+  const { username, layer_id } = req.query
 
   const dbQuery = 
     `
-    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name, g.geom_id as geom_id
+    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name
+
     FROM user_geometries g
+
     LEFT JOIN user_layers l ON g.layer_id=l.layer_id
-	  INNER JOIN users u ON g.user_id = u.id
-    WHERE u.username = '${user}' AND g.layer_id = ${layer_id}
+
+    INNER JOIN users u ON g.username = u.username
+
+    WHERE u.username = '${username}' AND g.layer_id = ${layer_id}
+
     ORDER BY g.layer_id`
 
 
 
   const geomBin = []
+  // property bin is an array of objects. 1 object for each geom.
+  // [{geomid: geom_id, description: description... etc}, {.... }]
   const propertyBin = []
   try {
   const dbResponse = await pool.query(dbQuery);
   console.log(dbResponse)
   dbResponse.rows.forEach(row => {
     const {geom, layer_id, layer_name, geom_id} = row
-    const [lat, lng] = JSON.parse(geom).coordinates
-    geomBin.push([lat, lng])
+    geomBin.push(JSON.parse(geom).coordinates)
     propertyBin.push({geom_id})
   });
   const geoJSON = generateGeojson(geomBin, propertyBin)
@@ -2476,94 +2970,60 @@ async function get_layer_geoms(req:Request, res:Response) {
     results: geoJSON,
   });
   } catch (err) {
-  console.log(err);
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'get_layer_geoms',
+    } as ApiResponse);
+  }
 }
-};
 
+async function update_layer_data(req:Request, res:Response) {
+  console.log(req.query.username, req.query.layerId)
+  if (!req.query.username || !req.query.layerId) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing username or layerId',
+      function: 'update_layer_data',
+    } as ApiResponse);
+  }
+  else if (!req.body.featureCollection) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing featureCollection in body',
+      function: 'update_layer_data',
+    } as ApiResponse);
+  }
 
-async function send_geoms(req:Request, res:Response) {
-  // console.log('send geoms received serverside')
-  // const { featureCollection, token } = req.body
-
-  // console.log(featureCollection)
-  // console.log(token)
-
-  // const [username, _] = token.split(':')
-
-  // let values = []
-  // const layername = featureCollection.features[0].properties['layername']
-  // featureCollection.features.forEach(f => {
-
-  //   const { geometry } = f
-
-  //   if (layername === f.properties['layername']) {
-  //     console.log("that's  great")
-  //   }
-  //   else {
-  //     return res.status(400).json({
-  //       status: 'failure',
-  //       message: 'Invalid input',
-  //       function: 'send_geoms',
-  //     } as ApiResponse);
-  //   }
-
-
-  //   /// formatting away double quotes. PSQL seems to only accept single quotes around the geojson
-    
-
-  //   values.push(
-  //     `(${layername}, ${user_id} , ST_GeomFromGeoJSON('${geometry}'))`
-  //   );
-  // })
-    
-
-    //// username cannot make multiple layers with the same name
-
-
-    // const dbQuery = `with s as (
-    //   select layer_id, layername
-    //   from LAYER_TABLE
-    //   where name = ${layername}
-    //   ), i as (
-    //   insert into LAYER_TABLE (name)
-    //   select ${layername}
-    //   where not exists (select ${layername} from s)
-    //   returning layer_id
-    //   )
-    //   select layer_id from i
-    //   union all
-    //   select layer_id from s;`
-
-    //   "INSERT INTO geometries (, user_id, geom) VALUES " + values;
-     
-  //     try {
-        
-  //       const dbResponse = await pool.query(dbQuery);
-  //   if (dbResponse.rowCount > 0) {
-  //     return res.status(200).json({
-  //       status: 'success',
-  //       message: dbResponse.rows[0].length,
-  //       function: 'admin_level_1',
-  //     } as ApiResponse);
-  //   }
-          
-
-
-  //       }
-  //      catch (err) {
-  //       console.log(err);
-  //     }
+  const { username, layerId } = req.query
+  const { featureCollection } = req.body
+  console.log(featureCollection)
+  const values = featureCollection.features.map(f => `('${layerId}' ,'${username}', ST_GeomFromGeoJSON('${JSON.stringify(f.geometry)}'))`)
+   
   
-
-  // return res.status(200).json({
-  //   status: 'success',
-  //   message: 'hello world',
-  //   function: 'send_geoms',
-  // } );
-
-}
-
-
+  const dbQuery = 
+  
+  `INSERT INTO user_geometries (layer_id, username, geom) VALUES ${values.join(",")}`  
+  
+  console.log(dbQuery)
+    try {
+      
+      const dbResponse = await pool.query(dbQuery);
+      res.status(200).json({
+        status: "success",
+        results: dbResponse.rows,
+      });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({
+        status: 'failure',
+        message: 'Error encountered on server',
+        function: 'update_layer_data',
+      } as ApiResponse);
+    }
+  }
+      
 
 function error_log(req:Request, res:Response) {
   const { body } = req;
@@ -2589,7 +3049,7 @@ router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
 router.route('/demography').get(auth, demography);
-// router.route('/population_density_buffer').get(auth, population_density_buffer);
+router.route('/population_density_buffer').get(auth, population_density_buffer);
 router.route('/population_buffer').get(auth, population_buffer);
 router.route('/urban_status').get(auth, urban_status);
 router.route('/urban_status_simple').get(auth, urban_status_simple);
@@ -2601,6 +3061,7 @@ router.route('/nearest_placename').get(auth, nearest_placename);
 router.route('/nearest_poi').get(auth, nearest_poi);
 router.route('/nearest_bank').get(auth, nearest_bank);
 router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
+router.route('/nearest_waterbody').get(auth, nearest_waterbody);
 router.route('/get_banks').get(auth, get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);
@@ -2617,17 +3078,20 @@ router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
 
-router.route('/send_geoms').post(send_geoms)
-router.route('/get_user_layer_metadata/:user').get(get_user_layer_metadata)
-router.route('/get_layer_geoms/:user/:layer_id').get(get_layer_geoms)
+//agriculture functions
+router.route('/NDVI_monthly').get(auth, NDVI_monthly);
+router.route('/avg_NDVI').get(auth, avg_NDVI);
+//in development 
+router.route('/vegetation_monitoring').get(auth, vegetation_monitoring);
 
+// finished
+router.route('/get_user_layer_metadata').get(get_user_layer_metadata)
+router.route('/get_layer_geoms').get(get_layer_geoms)
+router.route('/delete_layer').get(delete_layer)
 
-// router.route('/send_to_DB/:user_id').post(send_to_DB);
-// router.route('/get_user_geometries/:user_id').get(get_user_geometries);
-
- 
-
-
+// in development
+router.route('/update_layer_data').post(update_layer_data)
+router.route('/create_layer').post(create_layer)
 
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth, (req:Request, res:Response) => res.send('home/api/batch'));
