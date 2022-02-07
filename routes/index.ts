@@ -2933,7 +2933,7 @@ async function get_layer_geoms(req:Request, res:Response) {
     } as ApiResponse);
   }
   
-  const { username, layer_id } = req.query
+  const { username, layer_id, properties } = req.query
 
   const dbQuery = 
     `
@@ -2959,9 +2959,9 @@ async function get_layer_geoms(req:Request, res:Response) {
   const dbResponse = await pool.query(dbQuery);
   console.log(dbResponse)
   dbResponse.rows.forEach(row => {
-    const {geom, layer_id, layer_name, geom_id} = row
+    const {geom, layer_id, layer_name, geom_id, properties} = row
     geomBin.push(JSON.parse(geom).coordinates)
-    propertyBin.push({geom_id})
+    propertyBin.push({geom_id, properties})
   });
   const geoJSON = generateGeojson(geomBin, propertyBin)
   console.log(geoJSON)
@@ -2996,15 +2996,15 @@ async function update_layer_data(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  const { username, layerId } = req.query
+  const { username, layerId, properties } = req.query
   const { featureCollection } = req.body
   console.log(featureCollection)
-  const values = featureCollection.features.map(f => `('${layerId}' ,'${username}', ST_GeomFromGeoJSON('${JSON.stringify(f.geometry)}'))`)
+  const values = featureCollection.features.map(f => `('${layerId}' ,'${username}', ST_GeomFromGeoJSON('${JSON.stringify(f.geometry)}'), '${properties}')`)
    
   
   const dbQuery = 
   
-  `INSERT INTO user_geometries (layer_id, username, geom) VALUES ${values.join(",")}`  
+  `INSERT INTO user_geometries (layer_id, username, geom, properties) VALUES ${values.join(",")}`  
   
   console.log(dbQuery)
     try {
@@ -3081,15 +3081,12 @@ router.route('/error_log').post(error_log);
 //agriculture functions
 router.route('/NDVI_monthly').get(auth, NDVI_monthly);
 router.route('/avg_NDVI').get(auth, avg_NDVI);
-//in development 
 router.route('/vegetation_monitoring').get(auth, vegetation_monitoring);
 
-// finished
+// user management functions
 router.route('/get_user_layer_metadata').get(get_user_layer_metadata)
 router.route('/get_layer_geoms').get(get_layer_geoms)
 router.route('/delete_layer').get(delete_layer)
-
-// in development
 router.route('/update_layer_data').post(update_layer_data)
 router.route('/create_layer').post(create_layer)
 
