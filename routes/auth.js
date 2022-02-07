@@ -41,39 +41,44 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 exports.__esModule = true;
+var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+var credentials_1 = __importDefault(require("./credentials"));
+var permissions_1 = __importDefault(require("./permissions"));
+'./permissions';
+// export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
+//   next();
+// }
 function auth(req, res, next) {
     return __awaiter(this, void 0, void 0, function () {
+        var userId, funcName, token, decodedToken;
         return __generator(this, function (_a) {
-            next();
+            try {
+                userId = req.headers.authorization.split(':')[0];
+                funcName = req.url.split('/')[1];
+                token = req.headers.authorization.split(':')[1];
+                decodedToken = jsonwebtoken_1["default"].verify(token, credentials_1["default"].admin_key);
+                if (userId === decodedToken.userId && (0, permissions_1["default"])(userId, funcName)) {
+                    next();
+                }
+                else {
+                    res.status(401).json({
+                        status: 'Error',
+                        message: 'User Unauthorised.'
+                    });
+                }
+            }
+            catch (_b) {
+                res.status(401).json({
+                    status: 'Error',
+                    message: 'User unauthorised or unable to read token.'
+                });
+            }
             return [2 /*return*/];
         });
     });
 }
 exports["default"] = auth;
-// export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
-//   try {
-//     if (req.query.username === 'casper' && req.query.token === 'golden_ticket') {
-//       next();
-//     } else if (req.query.username === 'dss' && req.query.token === 'golden_ticket') {
-//       next();
-//     } else {
-//       const userId = req.headers.authorization.split(':')[0];
-//       const token = req.headers.authorization.split(':')[1];
-//       const decodedToken:any = jwt.verify(token, credentials.admin_key);
-//       if (userId === decodedToken.userId) {
-//         next();
-//       } else {
-//         res.status(401).json({
-//           status: 'Error',
-//           message: 'User Unauthorised.',
-//         });
-//       }
-//     }
-//   } catch {
-//     res.status(401).json({
-//       status: 'Error',
-//       message: 'User unauthorised or unable to read token.',
-//     });
-//   }
-// }
