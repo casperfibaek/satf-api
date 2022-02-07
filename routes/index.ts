@@ -1694,7 +1694,8 @@ async function login_user(req:Request, res:Response) {
     const dbResponse = await pool.query(dbQuery);
 
     if (dbResponse.rowCount > 0) {
-      const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      // const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      const token = hashedPassword
       return res.status(200).json({
         status: 'success',
         message: 'User Successfully Logged in',

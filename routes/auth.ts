@@ -16,12 +16,10 @@ import validatePermissionLevel from './permissions'; './permissions'
 export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
   
   try {
-    const userId = req.headers.authorization.split(':')[0];
     const funcName = req.url.split('/')[1]
-    const token = req.headers.authorization.split(':')[1];
-    const decodedToken:any = jwt.verify(token, credentials.admin_key);
-
-    if (userId === decodedToken.userId && validatePermissionLevel(userId, funcName)) {
+    const token = req.headers.authorization
+    // const decodedToken:any = jwt.verify(token, credentials.admin_key);
+    if (validatePermissionLevel(token, funcName)) {
       next();
     } else {
       res.status(401).json({

@@ -57,40 +57,45 @@ const _getFunctionLevel = (functionName: string): Number => {
         return functionLookup[functionName]
     }
     else {
+        console.log('something has gone wrong: breaking error')
         return 1000
     }
 }
 
-const _getUserLevel = (userName: string): number => {
+const _getUserLevel = (userName: string, token: string): number => {
 
     const organizationLookup = {
         'niras': {
-            'users': ['etrott'],
+            'users': ['etrott', 'ana_fer123'],
             'permissionLevel': 2,
-            // 'token': 'asifga89dsyh118y7kg7893jdklfu89dufidjmk2314u8e9tuiogklxcglu8989043tu89ki',
+            'token': 'asifga89dsyh118y7kg7893jdklfu89dufidjmk2314u8e9tuiogklxcglu8989043tu89ki',
         },
         'dss': {
             'users': [],
             'permissionLevel': 1,
-            // 'token': '238ihff789h9hsdog-.,.,.7f7d789osidjiosdghsdjkhgjsdghjklsdhgjkfjkghjkgfjd892',
+            'token': '238ihff789h9hsdog-.,.,.7f7d789osidjiosdghsdjkhgjsdghjklsdhgjkfjkghjkgfjd892',
         },
         'dma': {
             'users': [],
             'permissionLevel': 1,
-            // 'token': '238ihff789h9hsdog-.,.,.7f7d789osidjiosdghsdjkhgjsdghjklsdhgjkfjkghjkgfjd892',
+            'token': '238ihff789h9hsdog-.,.,.7f7d789osidjiosdghsdjkhgjsdghjklsdhgjkfjkghjkgfjd892',
         },
 
     }
     for (const org in organizationLookup) {
-			if (organizationLookup[org].users.includes(userName)) {
+			if (organizationLookup[org].users.includes(userName) && token === organizationLookup[org].token) {
                   return organizationLookup[org].permissionLevel
         } 
     } 
     return 0
 }
 
-export default function validatePermissionLevel(userName: string, functionName: string): boolean {
-    if (_getUserLevel(userName) >= _getFunctionLevel(functionName)) {
+export default function validatePermissionLevel(fullToken: string, functionName: string): boolean {
+
+    const userId = fullToken.split(':')[0];
+    const token = fullToken.split(':')[1];
+
+    if (_getUserLevel(userId, token) >= _getFunctionLevel(functionName)) {
         return true
     } else {
         return false
