@@ -3026,7 +3026,7 @@ function delete_layer(req, res) {
 }
 function get_layer_geoms(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layer_id, properties, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
+        var _a, username, layer_id, dbQuery, geomBin, propertyBin, dbResponse, geoJSON, err_45;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -3038,7 +3038,7 @@ function get_layer_geoms(req, res) {
                                 "function": 'get_layer_geoms'
                             })];
                     }
-                    _a = req.query, username = _a.username, layer_id = _a.layer_id, properties = _a.properties;
+                    _a = req.query, username = _a.username, layer_id = _a.layer_id;
                     dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name\n\n    FROM user_geometries g\n\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\n    INNER JOIN users u ON g.username = u.username\n\n    WHERE u.username = '" + username + "' AND g.layer_id = " + layer_id + "\n\n    ORDER BY g.layer_id";
                     geomBin = [];
                     propertyBin = [];
@@ -3050,9 +3050,9 @@ function get_layer_geoms(req, res) {
                     dbResponse = _b.sent();
                     console.log(dbResponse);
                     dbResponse.rows.forEach(function (row) {
-                        var geom = row.geom, layer_id = row.layer_id, layer_name = row.layer_name, geom_id = row.geom_id, properties = row.properties;
+                        var geom = row.geom, layer_id = row.layer_id, layer_name = row.layer_name, geom_id = row.geom_id;
                         geomBin.push(JSON.parse(geom).coordinates);
-                        propertyBin.push({ geom_id: geom_id, properties: properties });
+                        propertyBin.push({ geom_id: geom_id });
                     });
                     geoJSON = (0, utils_1.generateGeojson)(geomBin, propertyBin);
                     console.log(geoJSON);
@@ -3076,7 +3076,7 @@ function get_layer_geoms(req, res) {
 }
 function update_layer_data(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, username, layerId, properties, featureCollection, values, dbQuery, dbResponse, err_46;
+        var _a, username, layerId, featureCollection, values, dbQuery, dbResponse, err_46;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -3095,11 +3095,11 @@ function update_layer_data(req, res) {
                                 "function": 'update_layer_data'
                             })];
                     }
-                    _a = req.query, username = _a.username, layerId = _a.layerId, properties = _a.properties;
+                    _a = req.query, username = _a.username, layerId = _a.layerId;
                     featureCollection = req.body.featureCollection;
                     console.log(featureCollection);
-                    values = featureCollection.features.map(function (f) { return "('" + layerId + "' ,'" + username + "', ST_GeomFromGeoJSON('" + JSON.stringify(f.geometry) + "'), '" + properties + "')"; });
-                    dbQuery = "INSERT INTO user_geometries (layer_id, username, geom, properties) VALUES " + values.join(",");
+                    values = featureCollection.features.map(function (f) { return "('" + layerId + "' ,'" + username + "', ST_GeomFromGeoJSON('" + JSON.stringify(f.geometry) + "'))"; });
+                    dbQuery = "INSERT INTO user_geometries (layer_id, username, geom) VALUES " + values.join(",");
                     console.log(dbQuery);
                     _b.label = 1;
                 case 1:

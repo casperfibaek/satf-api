@@ -2935,7 +2935,7 @@ async function get_layer_geoms(req:Request, res:Response) {
     } as ApiResponse);
   }
   
-  const { username, layer_id, properties } = req.query
+  const { username, layer_id } = req.query
 
   const dbQuery = 
     `
@@ -2961,9 +2961,9 @@ async function get_layer_geoms(req:Request, res:Response) {
   const dbResponse = await pool.query(dbQuery);
   console.log(dbResponse)
   dbResponse.rows.forEach(row => {
-    const {geom, layer_id, layer_name, geom_id, properties} = row
+    const {geom, layer_id, layer_name, geom_id} = row
     geomBin.push(JSON.parse(geom).coordinates)
-    propertyBin.push({geom_id, properties})
+    propertyBin.push({geom_id})
   });
   const geoJSON = generateGeojson(geomBin, propertyBin)
   console.log(geoJSON)
@@ -2998,15 +2998,15 @@ async function update_layer_data(req:Request, res:Response) {
     } as ApiResponse);
   }
 
-  const { username, layerId, properties } = req.query
+  const { username, layerId } = req.query
   const { featureCollection } = req.body
   console.log(featureCollection)
-  const values = featureCollection.features.map(f => `('${layerId}' ,'${username}', ST_GeomFromGeoJSON('${JSON.stringify(f.geometry)}'), '${properties}')`)
+  const values = featureCollection.features.map(f => `('${layerId}' ,'${username}', ST_GeomFromGeoJSON('${JSON.stringify(f.geometry)}'))`)
    
   
   const dbQuery = 
   
-  `INSERT INTO user_geometries (layer_id, username, geom, properties) VALUES ${values.join(",")}`  
+  `INSERT INTO user_geometries (layer_id, username, geom) VALUES ${values.join(",")}`  
   
   console.log(dbQuery)
     try {
