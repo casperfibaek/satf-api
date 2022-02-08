@@ -1756,7 +1756,7 @@ function login_user(req, res) {
                 case 2:
                     dbResponse = _b.sent();
                     if (dbResponse.rowCount > 0) {
-                        token = jsonwebtoken_1["default"].sign({ userId: username }, credentials_1["default"].admin_key, { expiresIn: '24h' });
+                        token = hashedPassword;
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
                                 message: 'User Successfully Logged in',
@@ -1821,7 +1821,7 @@ function login_user_get(req, res) {
                 case 2:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
-                        token = jsonwebtoken_1["default"].sign({ userId: username }, credentials_1["default"].admin_key, { expiresIn: '24h' });
+                        token = hashedPassword;
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
                                 message: 'User Successfully Logged in',
@@ -3180,11 +3180,11 @@ router.route('/NDVI_monthly').get(auth_1["default"], NDVI_monthly);
 router.route('/avg_NDVI').get(auth_1["default"], avg_NDVI);
 router.route('/vegetation_monitoring').get(auth_1["default"], vegetation_monitoring);
 // user management functions
-router.route('/get_user_layer_metadata').get(get_user_layer_metadata);
-router.route('/get_layer_geoms').get(get_layer_geoms);
-router.route('/delete_layer').get(delete_layer);
-router.route('/update_layer_data').post(update_layer_data);
-router.route('/create_layer').post(create_layer);
+router.route('/get_user_layer_metadata').get(auth_1["default"], get_user_layer_metadata);
+router.route('/get_layer_geoms').get(auth_1["default"], get_layer_geoms);
+router.route('/delete_layer').get(auth_1["default"], delete_layer);
+router.route('/update_layer_data').post(auth_1["default"], update_layer_data);
+router.route('/create_layer').post(auth_1["default"], create_layer);
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth_1["default"], function (req, res) { return res.send('home/api/batch'); });
 exports["default"] = router;

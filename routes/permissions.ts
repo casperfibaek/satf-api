@@ -1,3 +1,11 @@
+// import getHashedPassword from './index';
+import crypto from 'crypto';
+import pg from 'pg';
+import credentials from './credentials';
+
+const pool = new pg.Pool(credentials);
+
+
 const _getFunctionLevel = (functionName: string): Number => {    
     const functionLookup = {
         api_version: 0,
@@ -62,40 +70,61 @@ const _getFunctionLevel = (functionName: string): Number => {
     }
 }
 
-const _getUserLevel = (userName: string, token: string): number => {
 
-    const organizationLookup = {
-        'niras': {
-            'users': ['etrott', 'ana_fer123'],
-            'permissionLevel': 2,
-            'token': 'asifga89dsyh118y7kg7893jdklfu89dufidjmk2314u8e9tuiogklxcglu8989043tu89ki',
-        },
-        'dss': {
-            'users': [],
-            'permissionLevel': 1,
-            'token': '238ihff789h9hsdog-.,.,.7f7d789osidjiosdghsdjkhgjsdghjklsdhgjkfjkghjkgfjd892',
-        },
-        'dma': {
-            'users': [],
-            'permissionLevel': 1,
-            'token': '238ihff789h9hsdog-.,.,.7f7d789osidjiosdghsdjkhgjsdghjklsdhgjkfjkghjkgfjd892',
-        },
+
+const _getUserLevel = async (token: string): Promise<Number> => {
+    console.log(token)
+    const [userName, pwd] = token.split(':')
+    
+    // const userName = 'ana_fer123'
+    // const pwd = 'utO9vks3fkbrP2IYXZj1lpU3K8hDBVtRRxiyFj6tjXs='
+    console.log(userName, pwd)
+    const dbQuery = `SELECT level FROM organizations org
+         LEFT JOIN users u ON org.org_name=u.org
+         WHERE username = '${userName}' AND password = '${pwd}';`;
+
+    try {
+    const dbResponse = await pool.query(dbQuery)
+    const level = dbResponse.rows[0].level
+
+    console.log('level:', level)
+    return level
+    } catch (err) {
+    console.log(err);
 
     }
-    for (const org in organizationLookup) {
-			if (organizationLookup[org].users.includes(userName) && token === organizationLookup[org].token) {
-                  return organizationLookup[org].permissionLevel
-        } 
-    } 
-    return 0
+    
+
+    // const userName = token.split(':')[0];
+    // const organizationLookup = {
+    //     'niras': {
+    //         'users': ['etrott', 'ana_fer123'],
+    //         'permissionLevel': 2,
+    //         'token': 'hdhdh',
+    //     },
+    //     'dss': {
+    //         'users': [],
+    //         'permissionLevel': 1,
+    //         'token': '',
+    //     },
+    //     'dma': {
+    //         'users': [],
+    //         'permissionLevel': 1,
+    //         'token': '',
+    //     },
+
+    // }
+    // for (const org in organizationLookup) {
+	// 		if (organizationLookup[org].users.includes(userName) && token === organizationLookup[org].token) {
+    //               return organizationLookup[org].permissionLevel
+    //     } 
+    // } 
+    // return 0
 }
 
-export default function validatePermissionLevel(fullToken: string, functionName: string): boolean {
-
-    const userId = fullToken.split(':')[0];
-    const token = fullToken.split(':')[1];
-
-    if (_getUserLevel(userId, token) >= _getFunctionLevel(functionName)) {
+export default async function validatePermissionLevel(token: string, functionName: string): Promise<boolean> {
+    const userLevel = await _getUserLevel(token)
+    if ( userLevel >= _getFunctionLevel(functionName)) {
         return true
     } else {
         return false
