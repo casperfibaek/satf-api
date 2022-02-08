@@ -8,6 +8,8 @@ import bbox from '@turf/bbox';
 import area from '@turf/area';
 import bboxPolygon from '@turf/bbox-polygon';
 import { toMercator, toWgs84 } from '@turf/projection';
+import { response } from 'express';
+import { token } from 'morgan';
 
 
 async function requestAuthToken(Id, Secret) {

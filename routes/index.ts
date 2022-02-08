@@ -1694,7 +1694,8 @@ async function login_user(req:Request, res:Response) {
     const dbResponse = await pool.query(dbQuery);
 
     if (dbResponse.rowCount > 0) {
-      const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      // const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      const token = hashedPassword
       return res.status(200).json({
         status: 'success',
         message: 'User Successfully Logged in',
@@ -1757,7 +1758,8 @@ async function login_user_get(req:Request, res:Response) {
     const dbResponse = await pool.query(dbQuery);
 
     if (dbResponse.rowCount > 0) {
-      const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      // const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      const token = hashedPassword
       return res.status(200).json({
         status: 'success',
         message: 'User Successfully Logged in',
@@ -3077,22 +3079,16 @@ router.route('/login_user').post(login_user);
 router.route('/create_user').post(create_user);
 router.route('/delete_user').post(delete_user);
 router.route('/error_log').post(error_log);
-
 //agriculture functions
 router.route('/NDVI_monthly').get(auth, NDVI_monthly);
 router.route('/avg_NDVI').get(auth, avg_NDVI);
-//in development 
 router.route('/vegetation_monitoring').get(auth, vegetation_monitoring);
-
-// finished
+// user management functions
 router.route('/get_user_layer_metadata').get(get_user_layer_metadata)
 router.route('/get_layer_geoms').get(get_layer_geoms)
 router.route('/delete_layer').get(delete_layer)
-
-// in development
 router.route('/update_layer_data').post(update_layer_data)
 router.route('/create_layer').post(create_layer)
-
 // TODO: This should take a post of a JSON object and batch process --> return.
 router.route('/batch').get(auth, (req:Request, res:Response) => res.send('home/api/batch'));
 
