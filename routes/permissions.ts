@@ -76,9 +76,6 @@ const _getUserLevel = async (token: string): Promise<Number> => {
     console.log(token)
     const [userName, pwd] = token.split(':')
     
-    // const userName = 'ana_fer123'
-    // const pwd = 'utO9vks3fkbrP2IYXZj1lpU3K8hDBVtRRxiyFj6tjXs='
-    console.log(userName, pwd)
     const dbQuery = `SELECT level FROM organizations org
          LEFT JOIN users u ON org.org_name=u.org
          WHERE username = '${userName}' AND password = '${pwd}';`;

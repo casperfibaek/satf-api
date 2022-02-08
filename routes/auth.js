@@ -60,7 +60,7 @@ function auth(req, res, next) {
                     token = void 0;
                     if (req.headers.authorization) {
                         token = req.headers.authorization;
-                        console.log('token:', token);
+                        // console.log('token:', token)
                     }
                     else {
                         token = 'guest_satf:guest_satf';

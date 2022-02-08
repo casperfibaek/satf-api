@@ -19,7 +19,7 @@ export default async function auth(req:Request, res:Response, next:Function): Pr
     let token
     if (req.headers.authorization) {
       token = req.headers.authorization
-      console.log('token:', token)
+      // console.log('token:', token)
     } else {
       token = 'guest_satf:guest_satf' 
     }
