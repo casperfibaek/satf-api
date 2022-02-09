@@ -1756,7 +1756,9 @@ function login_user(req, res) {
                 case 2:
                     dbResponse = _b.sent();
                     if (dbResponse.rowCount > 0) {
-                        token = hashedPassword;
+                        token = jsonwebtoken_1["default"].sign({ userId: username }, credentials_1["default"].admin_key, { expiresIn: '24h' });
+                        // const token = hashedPassword
+                        // console.log(token)
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
                                 message: 'User Successfully Logged in',
@@ -1821,7 +1823,9 @@ function login_user_get(req, res) {
                 case 2:
                     dbResponse = _a.sent();
                     if (dbResponse.rowCount > 0) {
-                        token = hashedPassword;
+                        token = jsonwebtoken_1["default"].sign({ userId: username }, credentials_1["default"].admin_key, { expiresIn: '24h' });
+                        console.log(token);
+                        // const token = hashedPassword
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
                                 message: 'User Successfully Logged in',
@@ -1848,46 +1852,31 @@ function login_user_get(req, res) {
         });
     });
 }
-function auth_token(token_to_verify) {
-    return __awaiter(this, void 0, void 0, function () {
-        var userId, token, decodedToken;
-        return __generator(this, function (_a) {
-            try {
-                userId = token_to_verify.split(':')[0];
-                token = token_to_verify.split(':')[1];
-                if (userId === 'casper' && token === 'golden_ticket') {
-                    return [2 /*return*/, true];
-                }
-                decodedToken = jsonwebtoken_1["default"].verify(token, credentials_1["default"].admin_key);
-                if (userId === decodedToken.userId) {
-                    return [2 /*return*/, true];
-                }
-                return [2 /*return*/, false];
-            }
-            catch (err) {
-                console.log(err);
-                return [2 /*return*/, false];
-            }
-            return [2 /*return*/];
-        });
-    });
-}
+// async function auth_token(token_to_verify:string) {
+//   try {
+//     const userId = token_to_verify.split(':')[0];
+//     const token = token_to_verify.split(':')[1];
+//     if (userId === 'casper' && token === 'golden_ticket') {
+//       return true;
+//     }
+//     const decodedToken:any = jwt.verify(token, credentials.admin_key);
+//     if (userId === decodedToken.userId) {
+//       return true;
+//     }
+//     return false;
+//   } catch (err) {
+//     console.log(err);
+//     return false;
+//   }
+// }
 function delete_user(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var token, authorised, username_1, userExists, deletedUser, userStillExists, err_28, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_29;
+        var token, username_1, userExists, deletedUser, userStillExists, err_28, _a, username, password, hashedPassword, userExists, verifiedUser, deletedUser, userStillExists, err_29;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     if (!req.body.token) return [3 /*break*/, 6];
                     token = req.body.token;
-                    authorised = auth_token(token);
-                    if (!authorised) {
-                        return [2 /*return*/, res.status(400).json({
-                                status: 'failure',
-                                message: 'Invalid token.',
-                                "function": 'delete_user'
-                            })];
-                    }
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 5, , 6]);
@@ -3131,7 +3120,7 @@ function error_log(req, res) {
     res.status(200).send();
 }
 router.route('/').get(auth_1["default"], function (req, res) { return res.send('home/api'); });
-router.route('/api_version').get(api_version);
+router.route('/api_version').get(auth_1["default"], api_version);
 router.route('/latlng_to_what3words').get(auth_1["default"], latlng_to_what3words);
 router.route('/what3words_to_latlng').get(auth_1["default"], what3words_to_latlng);
 router.route('/latlng_to_pluscode').get(auth_1["default"], latlng_to_pluscode);

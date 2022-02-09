@@ -45,6 +45,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 exports.__esModule = true;
+var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+var credentials_1 = __importDefault(require("./credentials"));
 var permissions_1 = __importDefault(require("./permissions"));
 './permissions';
 // export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
@@ -52,42 +54,39 @@ var permissions_1 = __importDefault(require("./permissions"));
 // }
 function auth(req, res, next) {
     return __awaiter(this, void 0, void 0, function () {
-        var token, funcName, _a;
+        var satf_token, _a, userId, token, decodedToken, funcName, validatedToken, validatedFunctionPermissions;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
-                    _b.trys.push([0, 2, , 3]);
-                    token = void 0;
-                    if (req.headers.authorization) {
-                        token = req.headers.authorization;
-                        // console.log('token:', token)
-                    }
-                    else {
-                        token = 'guest_satf:guest_satf';
-                    }
+                    satf_token = req.headers.authorization;
+                    _a = satf_token.split(':'), userId = _a[0], token = _a[1];
+                    decodedToken = jsonwebtoken_1["default"].verify(token, credentials_1["default"].admin_key);
                     funcName = (req.url.split('/')[1].split('?')[0]);
-                    console.log(funcName);
-                    return [4 /*yield*/, (0, permissions_1["default"])(token, funcName)];
+                    validatedToken = userId === decodedToken.userId;
+                    return [4 /*yield*/, (0, permissions_1["default"])(satf_token, funcName)];
                 case 1:
-                    // const decodedToken:any = jwt.verify(token, credentials.admin_key);
-                    if (_b.sent()) {
-                        next();
+                    validatedFunctionPermissions = _b.sent();
+                    console.log('satf_token:', satf_token);
+                    console.log('funcName:', funcName);
+                    console.log(validatedToken, validatedFunctionPermissions);
+                    try {
+                        if (validatedToken && validatedFunctionPermissions) {
+                            next();
+                        }
+                        else {
+                            res.status(401).json({
+                                status: 'Error',
+                                message: 'User Unauthorised.'
+                            });
+                        }
                     }
-                    else {
+                    catch (_c) {
                         res.status(401).json({
                             status: 'Error',
-                            message: 'User Unauthorised.'
+                            message: 'User unauthorised or unable to read token.'
                         });
                     }
-                    return [3 /*break*/, 3];
-                case 2:
-                    _a = _b.sent();
-                    res.status(401).json({
-                        status: 'Error',
-                        message: 'User unauthorised or unable to read token.'
-                    });
-                    return [3 /*break*/, 3];
-                case 3: return [2 /*return*/];
+                    return [2 /*return*/];
             }
         });
     });

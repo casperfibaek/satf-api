@@ -71,20 +71,21 @@ const _getFunctionLevel = (functionName: string): Number => {
 }
 
 
-
 const _getUserLevel = async (token: string): Promise<Number> => {
-    console.log(token)
-    const [userName, pwd] = token.split(':')
-    
+    console.log('getUserLelvel:' , token)
+    let [userName, _] = token.split(':')
+    if (userName === 'guest_satf') {
+        return 0
+    }
     const dbQuery = `SELECT level FROM organizations org
          LEFT JOIN users u ON org.org_name=u.org
-         WHERE username = '${userName}' AND password = '${pwd}';`;
-
-    try {
-    const dbResponse = await pool.query(dbQuery)
+         WHERE username = '${userName}'`;
+        try {
+    const dbResponse = await pool.query(dbQuery)    
+    //console.log(dbResponse)
     const level = dbResponse.rows[0].level
 
-    console.log('level:', level)
+    //console.log('level:', level)
     return level
     } catch (err) {
     console.log(err);
@@ -120,6 +121,7 @@ const _getUserLevel = async (token: string): Promise<Number> => {
 }
 
 export default async function validatePermissionLevel(token: string, functionName: string): Promise<boolean> {
+    console.log('validateupermissiolevel:' , token)
     const userLevel = await _getUserLevel(token)
     if ( userLevel >= _getFunctionLevel(functionName)) {
         return true

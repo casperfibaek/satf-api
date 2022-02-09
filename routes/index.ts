@@ -1694,8 +1694,9 @@ async function login_user(req:Request, res:Response) {
     const dbResponse = await pool.query(dbQuery);
 
     if (dbResponse.rowCount > 0) {
-      // const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
-      const token = hashedPassword
+      const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      // const token = hashedPassword
+      // console.log(token)
       return res.status(200).json({
         status: 'success',
         message: 'User Successfully Logged in',
@@ -1758,8 +1759,9 @@ async function login_user_get(req:Request, res:Response) {
     const dbResponse = await pool.query(dbQuery);
 
     if (dbResponse.rowCount > 0) {
-      // const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
-      const token = hashedPassword
+      const token = jwt.sign({ userId: username }, credentials.admin_key, { expiresIn: '24h' });
+      console.log(token)
+      // const token = hashedPassword
       return res.status(200).json({
         status: 'success',
         message: 'User Successfully Logged in',
@@ -1783,39 +1785,39 @@ async function login_user_get(req:Request, res:Response) {
   }
 }
 
-async function auth_token(token_to_verify:string) {
-  try {
-    const userId = token_to_verify.split(':')[0];
-    const token = token_to_verify.split(':')[1];
+// async function auth_token(token_to_verify:string) {
+//   try {
+//     const userId = token_to_verify.split(':')[0];
+//     const token = token_to_verify.split(':')[1];
 
-    if (userId === 'casper' && token === 'golden_ticket') {
-      return true;
-    }
-    const decodedToken:any = jwt.verify(token, credentials.admin_key);
+//     if (userId === 'casper' && token === 'golden_ticket') {
+//       return true;
+//     }
+//     const decodedToken:any = jwt.verify(token, credentials.admin_key);
 
-    if (userId === decodedToken.userId) {
-      return true;
-    }
+//     if (userId === decodedToken.userId) {
+//       return true;
+//     }
 
-    return false;
-  } catch (err) {
-    console.log(err);
-    return false;
-  }
-}
+//     return false;
+//   } catch (err) {
+//     console.log(err);
+//     return false;
+//   }
+// }
 
 async function delete_user(req:Request, res:Response) {
   if (req.body.token) {
     const { token } = req.body;
-    const authorised = auth_token(token);
+    // const authorised = auth_token(token);
 
-    if (!authorised) {
-      return res.status(400).json({
-        status: 'failure',
-        message: 'Invalid token.',
-        function: 'delete_user',
-      } as ApiResponse);
-    }
+    // if (!authorised) {
+    //   return res.status(400).json({
+    //     status: 'failure',
+    //     message: 'Invalid token.',
+    //     function: 'delete_user',
+    //   } as ApiResponse);
+    // }
     try {
       const username = token.split(':')[0];
       const userExists = await usernameExists(username);
@@ -3035,7 +3037,7 @@ function error_log(req:Request, res:Response) {
 
 router.route('/').get(auth, (req:Request, res:Response) => res.send('home/api'));
 
-router.route('/api_version').get(api_version);
+router.route('/api_version').get(auth, api_version);
 router.route('/latlng_to_what3words').get(auth, latlng_to_what3words);
 router.route('/what3words_to_latlng').get(auth, what3words_to_latlng);
 router.route('/latlng_to_pluscode').get(auth, latlng_to_pluscode);
