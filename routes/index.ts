@@ -1916,12 +1916,12 @@ async function a_to_b_time_distance_walk(req:Request, res:Response) {
     try {
 
   const directions = await _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
-  console.log(directions.duration)
+  // console.log(directions.duration)
   const duration = toHHMMSS(directions.duration)
 
       return res.status(200).json({
       status: "success",
-      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100},
       function: "a_to_b_time_distance_walk",
     } as ApiResponse);
   // function without output of minutes and distance in meters from A to B
@@ -1982,7 +1982,7 @@ async function a_to_b_time_distance_bike(req:Request, res:Response) {
 
       return res.status(200).json({
       status: "success",
-      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100 },
       function: "a_to_b_time_distance_bike",
     } as ApiResponse);
 
@@ -2039,7 +2039,7 @@ async function a_to_b_time_distance_car(req:Request, res:Response) {
 
       return res.status(200).json({
       status: "success",
-      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100, geometry: directions.geometry },
+      message: { time: duration, distance: Math.round((directions.distance/1000)*100)/100 },
       function: "a_to_b_time_distance_car",
     } as ApiResponse);
  
@@ -2899,12 +2899,12 @@ async function delete_layer(req:Request, res:Response) {
     } as ApiResponse);
   }
   
-  const { layerId } = req.query
+  const { layerId, username } = req.query
 
   const dbQuery = `
     DELETE
     FROM user_layers
-    WHERE layer_id=${layerId}`
+    WHERE layer_id=${layerId} AND username=${username}`
     try {
       const dbResponse = await pool.query(dbQuery);
       return res.status(200).json({
