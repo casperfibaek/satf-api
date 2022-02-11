@@ -2899,14 +2899,16 @@ async function delete_layer(req:Request, res:Response) {
     } as ApiResponse);
   }
   
-  const { layerId, username } = req.query
+  const { layerId } = req.query
 
   const dbQuery = `
     DELETE
     FROM user_layers
-    WHERE layer_id=${layerId} AND username=${username}`
+    WHERE layer_id=${layerId}`
     try {
+      
       const dbResponse = await pool.query(dbQuery);
+     
       return res.status(200).json({
         status: "success",
         results: dbResponse.rows,
