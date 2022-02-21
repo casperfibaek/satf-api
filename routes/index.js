@@ -1993,14 +1993,15 @@ function a_to_b_time_distance_walk(req, res) {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)];
+                    return [4 /*yield*/, _get_directions(profile, req.query.lng1, req.query.lat1, req.query.lng2, req.query.lat2)
+                        // console.log(directions.duration)
+                    ];
                 case 2:
                     directions = _a.sent();
-                    console.log(directions.duration);
                     duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100 },
                             "function": "a_to_b_time_distance_walk"
                         })];
                 case 3:
@@ -2047,7 +2048,7 @@ function a_to_b_time_distance_bike(req, res) {
                     duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100 },
                             "function": "a_to_b_time_distance_bike"
                         })];
                 case 3:
@@ -2094,7 +2095,7 @@ function a_to_b_time_distance_car(req, res) {
                     duration = (0, utils_1.toHHMMSS)(directions.duration);
                     return [2 /*return*/, res.status(200).json({
                             status: "success",
-                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100, geometry: directions.geometry },
+                            message: { time: duration, distance: Math.round((directions.distance / 1000) * 100) / 100 },
                             "function": "a_to_b_time_distance_car"
                         })];
                 case 3:

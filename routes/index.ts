@@ -484,19 +484,8 @@ async function population_density_buffer(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    WITH const (pp_geom) AS (
-        values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${Number(req.query.buffer) + 50}')::geometry)
-    )
-    
-    SELECT
-        SUM((ST_SummaryStats(ST_Clip(
-            ppp_avg.rast, 
-            const.pp_geom
-        ))).sum::int) as pop_dense_buf
-    FROM
-      ppp_avg, const
-    WHERE ST_Intersects(const.pp_geom, ppp_avg.rast);
-  `;
+    SELECT pop_density_buffer('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as pop_dense_buf;
+    `;
 
   try {
     const dbResponse = await pool.query(dbQuery);
@@ -540,42 +529,7 @@ async function population_buffer(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    WITH const (pp_geom) AS (
-            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${Number(req.query.buffer) + 50}')::geometry)
-        )
-
-    SELECT CASE 
-      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN --- ghana bbox
-        ( With gh_daytime AS(
-        SELECT 
-          SUM((ST_SummaryStats(ST_Clip(a.rast, pp_geom), 1)).sum)::int AS daytime
-          FROM ghana_pop_daytime a, const WHERE (ST_Intersects(const.pp_geom, a.rast))),
-          
-          gh_nighttime AS(
-            SELECT
-            SUM((ST_SummaryStats(ST_Clip(b.rast, pp_geom), 1)).sum)::int AS nighttime
-            FROM ghana_pop_nighttime b, const WHERE (ST_Intersects(const.pp_geom, b.rast))),
-
-          gh_unweighted AS(
-            SELECT
-            SUM((ST_SummaryStats(ST_Clip(c.rast, pp_geom), 1)).sum)::int AS unweighted
-            FROM ghana_pop_unweighted c, const WHERE (ST_Intersects(const.pp_geom, c.rast)))
-
-          SELECT json_agg(json_build_array('daytime', daytime, 'nighttime', nighttime, 'average', unweighted))
-            FROM gh_daytime, gh_nighttime, gh_unweighted)
-
-      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN --- TZA bbox
-        (With tza_query AS (SELECT SUM((ST_SummaryStats(ST_Clip(
-          tza_ppp_2020.rast, 
-          const.pp_geom
-          ))).sum::int) as tza_pop
-          FROM
-          tza_ppp_2020, const
-          WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
-        SELECT json_agg(json_build_array('daytime', tza_pop, 'nighttime', tza_pop, 'average', tza_pop))
-        FROM tza_query)
-    END as pop_buf
-  ;
+    SELECT pop_buffer('${req.query.lng}', '${req.query.lat}', '${Number(req.query.buffer)}') as pop_buf;
   `;
 
   try {
@@ -631,28 +585,7 @@ async function population_density_walk(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    WITH const (pp_geom) AS (
-            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 55) + 50}')::geometry)
-        )
-    SELECT CASE 
-      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN
-        (SELECT SUM((ST_SummaryStats(ST_Clip(
-        ghana_pop_unweighted.rast, 
-        const.pp_geom
-        ))).sum::int) 
-        FROM
-          ghana_pop_unweighted, const
-        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))
-      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN
-        (SELECT SUM((ST_SummaryStats(ST_Clip(
-          tza_ppp_2020.rast, 
-          const.pp_geom
-        ))).sum::int)
-        FROM
-          tza_ppp_2020, const
-        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
-    END
-      as pop_dense_walk
+    SELECT pop_density_buffer_walk('${req.query.lng}', '${req.query.lat}', '${Number(req.query.minutes)}') as pop_dense_walk;
   `;
 
   try {
@@ -697,28 +630,7 @@ async function population_density_bike(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    WITH const (pp_geom) AS (
-            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 155) + 50}')::geometry)
-        )
-    SELECT CASE 
-      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN
-        (SELECT SUM((ST_SummaryStats(ST_Clip(
-        ghana_pop_unweighted.rast, 
-        const.pp_geom
-        ))).sum::int)
-        FROM
-          ghana_pop_unweighted, const
-        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))
-      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN
-        (SELECT SUM((ST_SummaryStats(ST_Clip(
-          tza_ppp_2020.rast, 
-          const.pp_geom
-        ))).sum::int) 
-        FROM
-          tza_ppp_2020, const
-        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
-    END
-      as pop_dense_bike
+    SELECT pop_density_buffer_bike('${req.query.lng}', '${req.query.lat}', '${Number(req.query.minutes)}') as pop_dense_bike;
   `;
 
   try {
@@ -764,29 +676,7 @@ async function population_density_car(req:Request, res:Response) {
   }
 
   const dbQuery = `
-    WITH const (pp_geom) AS (
-            values (ST_Buffer(ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)::geography, '${(Number(req.query.minutes) * 444) + 50}')::geometry)
-        )
-    SELECT CASE 
-      WHEN (SELECT geom_isghana('${req.query.lng}', '${req.query.lat}') as check_ghana) = true THEN
-        (SELECT SUM((ST_SummaryStats(ST_Clip(
-        ghana_pop_unweighted.rast, 
-        const.pp_geom
-        ))).sum::int)
-        FROM
-          ghana_pop_unweighted, const
-        WHERE ST_Intersects(const.pp_geom, ghana_pop_unweighted.rast))
-      WHEN (SELECT geom_istza('${req.query.lng}', '${req.query.lat}') as check_tza) = true THEN
-        (SELECT SUM((ST_SummaryStats(ST_Clip(
-          tza_ppp_2020.rast, 
-          const.pp_geom
-        ))).sum::int) 
-        FROM
-          tza_ppp_2020, const
-        WHERE ST_Intersects(const.pp_geom, tza_ppp_2020.rast))
-    END
-      as pop_dense_car
-;
+    SELECT pop_density_buffer_car('${req.query.lng}', '${req.query.lat}', '${Number(req.query.minutes)}') as pop_dense_car;
   `;
 
   try {
@@ -2609,7 +2499,7 @@ async function avg_NDVI(req:Request, res:Response) {
   }
 }
 
-///in development
+
 async function vegetation_monitoring(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
@@ -2723,7 +2613,7 @@ async function vegetation_monitoring(req:Request, res:Response) {
         ndvi_trend = "vegetation index: trending up"
 
     } else if (sum(trendlast15Days) < 0) {
-      ndvi_trend = "vegeation index: trending down"
+      ndvi_trend = "vegetation index: trending down"
 
     } else 
       ndvi_trend = "vegetation index: no trend identified"
@@ -2786,7 +2676,7 @@ async function nearest_waterbody(req:Request, res:Response) {
     else
       body_area = dbResponse.rows[0].body_area
     if (dbResponse.rowCount > 0) {
-      console.log(dbResponse.rows[0])
+      // console.log(dbResponse.rows[0])
       return res.status(200).json({
         status: 'success',
         message: dbResponse.rows[0].dist,
