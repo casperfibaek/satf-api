@@ -1209,6 +1209,58 @@ async function nearest_bank(req:Request, res:Response) {
   }
 }
 
+async function nearest_bank_location(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat or lng',
+      function: 'nearest_bank_location',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'nearest_bank_location',
+    } as ApiResponse);
+  }
+
+  const dbQuery = `
+    SELECT
+    round(ST_X("geom")::numeric, 6) AS "lng",
+      round(ST_Y("geom")::numeric, 6) AS "lat"
+    FROM public.gh_tz_poi
+    WHERE fclass = 'bank'
+    ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
+    LIMIT 1;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].name,
+        function: 'nearest_bank_location',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_bank_location',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_bank_location',
+    } as ApiResponse);
+  }
+}
+
+
 async function nearest_bank_distance(req:Request, res:Response) {
   if (!req.query.lat || !req.query.lng) {
     return res.status(400).json({
@@ -2956,6 +3008,7 @@ router.route('/admin_level_2_fuzzy_lev').get(auth, admin_level_2_fuzzy_lev);
 router.route('/nearest_placename').get(auth, nearest_placename);
 router.route('/nearest_poi').get(auth, nearest_poi);
 router.route('/nearest_bank').get(auth, nearest_bank);
+router.route('/nearest_bank_location').get(auth, nearest_bank_location);
 router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
 router.route('/nearest_waterbody').get(auth, nearest_waterbody);
 router.route('/get_banks').get(auth, get_banks);
