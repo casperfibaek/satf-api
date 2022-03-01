@@ -1084,6 +1084,56 @@ async function nearest_poi(req:Request, res:Response) {
   }
 }
 
+async function nearest_poi_location(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat or lng',
+      function: 'nearest_poi_location',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'nearest_poi_location',
+    } as ApiResponse);
+  }
+
+  const dbQuery = `
+    SELECT 
+      round(ST_X("geom")::numeric, 6) AS "lng",
+      round(ST_Y("geom")::numeric, 6) AS "lat" 
+    FROM gh_tz_poi
+    ORDER BY geom <-> ST_SetSRID(ST_Point('${req.query.lng}', '${req.query.lat}'), 4326)
+    LIMIT 1;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    if (dbResponse.rowCount > 0) {
+      return res.status(200).json({
+        status: 'success',
+        message: {lat: dbResponse.rows[0].lat, lng: dbResponse.rows[0].lng},
+        function: 'nearest_poi_location',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_poi_location',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_poi_location',
+    } as ApiResponse);
+  }
+}
+
 async function get_banks(req:Request, res:Response) {
   if (!req.query.name) {
     return res.status(400).json({
@@ -1241,7 +1291,7 @@ async function nearest_bank_location(req:Request, res:Response) {
     if (dbResponse.rowCount > 0) {
       return res.status(200).json({
         status: 'success',
-        message: dbResponse.rows[0].name,
+        message: {lat: dbResponse.rows[0].lat, lng: dbResponse.rows[0].lng},
         function: 'nearest_bank_location',
       } as ApiResponse);
     }
@@ -2750,6 +2800,64 @@ async function nearest_waterbody(req:Request, res:Response) {
   }
 }
 
+async function nearest_waterbody_location(req:Request, res:Response) {
+  if (!req.query.lat || !req.query.lng) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Request missing lat or lng',
+      function: 'nearest_waterbody_location',
+    } as ApiResponse);
+  }
+
+  if (!isValidLatitude(req.query.lat) || !isValidLongitude(req.query.lng)) {
+    return res.status(400).json({
+      status: 'failure',
+      message: 'Invalid input',
+      function: 'nearest_waterbody_location',
+    } as ApiResponse);
+  }
+
+  const dbQuery = `
+    SELECT
+    ST_AsGeoJSON(w.geom) as geom,
+    ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('${req.query.lng}', '${req.query.lat}')::geography, 4326))::numeric, 2) as dist, 
+    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area
+    FROM gh_tz_waterbodies w
+    ORDER BY dist
+    LIMIT 1;
+  `;
+
+  try {
+    const dbResponse = await pool.query(dbQuery);
+    let body_area = {}
+    if (dbResponse.rows[0].body_area == 0) {
+      body_area = 'data not available'; //not active for now
+    }
+    else
+      body_area = dbResponse.rows[0].body_area
+    if (dbResponse.rowCount > 0) {
+      // console.log(dbResponse.rows[0])
+      return res.status(200).json({
+        status: 'success',
+        message: dbResponse.rows[0].geom,
+        function: 'nearest_waterbody_location',
+      } as ApiResponse);
+    }
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_waterbody_location',
+    } as ApiResponse);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 'failure',
+      message: 'Error encountered on server',
+      function: 'nearest_waterbody_location',
+    } as ApiResponse);
+  }
+}
+
 async function get_user_layer_metadata(req:Request, res:Response) {
 
   if (!req.query.username) {
@@ -3007,10 +3115,12 @@ router.route('/admin_level_2_fuzzy_tri').get(auth, admin_level_2_fuzzy_tri);
 router.route('/admin_level_2_fuzzy_lev').get(auth, admin_level_2_fuzzy_lev);
 router.route('/nearest_placename').get(auth, nearest_placename);
 router.route('/nearest_poi').get(auth, nearest_poi);
+router.route('/nearest_poi_location').get(auth, nearest_poi_location);
 router.route('/nearest_bank').get(auth, nearest_bank);
-router.route('/nearest_bank_location').get(auth, nearest_bank_location);
+router.route('/nearest_bank_location').get(nearest_bank_location);
 router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
 router.route('/nearest_waterbody').get(auth, nearest_waterbody);
+router.route('/nearest_waterbody_location').get(nearest_waterbody_location);
 router.route('/get_banks').get(auth, get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth, a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth, a_to_b_time_distance_bike);
