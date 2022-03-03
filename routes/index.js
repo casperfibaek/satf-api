@@ -3293,7 +3293,7 @@ router.route('/population_density_car').get(auth_1["default"], population_densit
 router.route('/pop_density_isochrone_walk').get(auth_1["default"], pop_density_isochrone_walk);
 router.route('/pop_density_isochrone_bike').get(auth_1["default"], pop_density_isochrone_bike);
 router.route('/pop_density_isochrone_car').get(auth_1["default"], pop_density_isochrone_car);
-router.route('/isochrone_walk').get(isochrone_walk);
+router.route('/isochrone_walk').get(auth_1["default"], isochrone_walk);
 router.route('/isochrone_bike').get(auth_1["default"], isochrone_bike);
 router.route('/isochrone_car').get(auth_1["default"], isochrone_car);
 router.route('/nightlights').get(auth_1["default"], nightlights);
@@ -3308,12 +3308,12 @@ router.route('/admin_level_2_fuzzy_tri').get(auth_1["default"], admin_level_2_fu
 router.route('/admin_level_2_fuzzy_lev').get(auth_1["default"], admin_level_2_fuzzy_lev);
 router.route('/nearest_placename').get(auth_1["default"], nearest_placename);
 router.route('/nearest_poi').get(auth_1["default"], nearest_poi);
-router.route('/nearest_poi_location').get(nearest_poi_location);
+router.route('/nearest_poi_location').get(auth_1["default"], nearest_poi_location);
 router.route('/nearest_bank').get(auth_1["default"], nearest_bank);
-router.route('/nearest_bank_location').get(nearest_bank_location);
+router.route('/nearest_bank_location').get(auth_1["default"], nearest_bank_location);
 router.route('/nearest_bank_distance').get(auth_1["default"], nearest_bank_distance);
 router.route('/nearest_waterbody').get(auth_1["default"], nearest_waterbody);
-router.route('/nearest_waterbody_location').get(nearest_waterbody_location);
+router.route('/nearest_waterbody_location').get(auth_1["default"], nearest_waterbody_location);
 router.route('/get_banks').get(auth_1["default"], get_banks);
 router.route('/a_to_b_time_distance_walk').get(auth_1["default"], a_to_b_time_distance_walk);
 router.route('/a_to_b_time_distance_bike').get(auth_1["default"], a_to_b_time_distance_bike);
