@@ -1511,7 +1511,6 @@ function isochrone_walk(req, res) {
                     }
                     profile = "walking";
                     return [4 /*yield*/, _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-                        // console.log(response)
                         // const isochrone = JSON.stringify(response.coordinates) 
                         // const dbQuery = `
                         //   SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
@@ -1519,7 +1518,6 @@ function isochrone_walk(req, res) {
                     ];
                 case 1:
                     response = _a.sent();
-                    // console.log(response)
                     // const isochrone = JSON.stringify(response.coordinates) 
                     // const dbQuery = `
                     //   SELECT ST_AsGeoJSON(pgr_isochroneWalk('${req.query.lng}', '${req.query.lat}', '${req.query.minutes}'), 6) as geom;
@@ -1528,7 +1526,7 @@ function isochrone_walk(req, res) {
                         // const dbResponse = await pool.query(dbQuery);
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: JSON.stringify(response),
+                                message: response,
                                 "function": 'isochrone_walk'
                             })];
                     }
@@ -2996,7 +2994,7 @@ function nearest_waterbody(req, res) {
 }
 function nearest_waterbody_location(req, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var dbQuery, dbResponse, body_area, err_44;
+        var dbQuery, dbResponse, body_area, geometry, geojson, err_44;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -3014,7 +3012,7 @@ function nearest_waterbody_location(req, res) {
                                 "function": 'nearest_waterbody_location'
                             })];
                     }
-                    dbQuery = "\n    SELECT\n    ST_AsGeoJSON(w.geom) as geom,\n    ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('" + req.query.lng + "', '" + req.query.lat + "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT\n    id as geom_id,\n    ST_AsGeoJSON(w.geom) as geom,\n    fclass as name,\n    ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('" + req.query.lng + "', '" + req.query.lat + "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ";
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -3028,10 +3026,11 @@ function nearest_waterbody_location(req, res) {
                     else
                         body_area = dbResponse.rows[0].body_area;
                     if (dbResponse.rowCount > 0) {
-                        // console.log(dbResponse.rows[0])
+                        geometry = (JSON.parse(dbResponse.rows[0].geom));
+                        geojson = { "type": "Feature", "properties": { "id": dbResponse.rows[0].geom_id, "distance": dbResponse.rows[0].dist, "area_sqm": dbResponse.rows[0].body_area }, "geometry": geometry };
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].geom,
+                                message: geojson,
                                 "function": 'nearest_waterbody_location'
                             })];
                     }
@@ -3294,7 +3293,7 @@ router.route('/population_density_car').get(auth_1["default"], population_densit
 router.route('/pop_density_isochrone_walk').get(auth_1["default"], pop_density_isochrone_walk);
 router.route('/pop_density_isochrone_bike').get(auth_1["default"], pop_density_isochrone_bike);
 router.route('/pop_density_isochrone_car').get(auth_1["default"], pop_density_isochrone_car);
-router.route('/isochrone_walk').get(auth_1["default"], isochrone_walk);
+router.route('/isochrone_walk').get(isochrone_walk);
 router.route('/isochrone_bike').get(auth_1["default"], isochrone_bike);
 router.route('/isochrone_car').get(auth_1["default"], isochrone_car);
 router.route('/nightlights').get(auth_1["default"], nightlights);
@@ -3309,7 +3308,7 @@ router.route('/admin_level_2_fuzzy_tri').get(auth_1["default"], admin_level_2_fu
 router.route('/admin_level_2_fuzzy_lev').get(auth_1["default"], admin_level_2_fuzzy_lev);
 router.route('/nearest_placename').get(auth_1["default"], nearest_placename);
 router.route('/nearest_poi').get(auth_1["default"], nearest_poi);
-router.route('/nearest_poi_location').get(auth_1["default"], nearest_poi_location);
+router.route('/nearest_poi_location').get(nearest_poi_location);
 router.route('/nearest_bank').get(auth_1["default"], nearest_bank);
 router.route('/nearest_bank_location').get(nearest_bank_location);
 router.route('/nearest_bank_distance').get(auth_1["default"], nearest_bank_distance);

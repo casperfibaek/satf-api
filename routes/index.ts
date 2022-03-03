@@ -1381,7 +1381,7 @@ async function isochrone_walk(req:Request, res:Response) {
 
     const profile = "walking"
     const response = await _get_isochrone(profile, req.query.lng, req.query.lat, req.query.minutes)
-    // console.log(response)
+
     // const isochrone = JSON.stringify(response.coordinates) 
 
   // const dbQuery = `
@@ -1392,7 +1392,7 @@ async function isochrone_walk(req:Request, res:Response) {
     // const dbResponse = await pool.query(dbQuery);
       return res.status(200).json({
         status: 'success',
-        message: JSON.stringify(response),
+        message: response,
         function: 'isochrone_walk',
       } as ApiResponse);
     } catch (err) {
@@ -2819,7 +2819,9 @@ async function nearest_waterbody_location(req:Request, res:Response) {
 
   const dbQuery = `
     SELECT
+    id as geom_id,
     ST_AsGeoJSON(w.geom) as geom,
+    fclass as name,
     ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('${req.query.lng}', '${req.query.lat}')::geography, 4326))::numeric, 2) as dist, 
     COALESCE(ROUND(body_area::numeric, 2), 0) as body_area
     FROM gh_tz_waterbodies w
@@ -2836,10 +2838,14 @@ async function nearest_waterbody_location(req:Request, res:Response) {
     else
       body_area = dbResponse.rows[0].body_area
     if (dbResponse.rowCount > 0) {
-      // console.log(dbResponse.rows[0])
+
+      const geometry = (JSON.parse(dbResponse.rows[0].geom))
+
+      const geojson = {"type": "Feature", "properties": {"id": dbResponse.rows[0].geom_id, "distance":  dbResponse.rows[0].dist, "area_sqm":  dbResponse.rows[0].body_area}, "geometry": geometry}
+      
       return res.status(200).json({
         status: 'success',
-        message: dbResponse.rows[0].geom,
+        message: geojson,
         function: 'nearest_waterbody_location',
       } as ApiResponse);
     }
@@ -3100,7 +3106,7 @@ router.route('/population_density_car').get(auth, population_density_car);
 router.route('/pop_density_isochrone_walk').get(auth, pop_density_isochrone_walk);
 router.route('/pop_density_isochrone_bike').get(auth, pop_density_isochrone_bike);
 router.route('/pop_density_isochrone_car').get(auth, pop_density_isochrone_car);
-router.route('/isochrone_walk').get(auth, isochrone_walk);
+router.route('/isochrone_walk').get(isochrone_walk);
 router.route('/isochrone_bike').get(auth, isochrone_bike);
 router.route('/isochrone_car').get(auth, isochrone_car);
 router.route('/nightlights').get(auth, nightlights);
@@ -3115,7 +3121,7 @@ router.route('/admin_level_2_fuzzy_tri').get(auth, admin_level_2_fuzzy_tri);
 router.route('/admin_level_2_fuzzy_lev').get(auth, admin_level_2_fuzzy_lev);
 router.route('/nearest_placename').get(auth, nearest_placename);
 router.route('/nearest_poi').get(auth, nearest_poi);
-router.route('/nearest_poi_location').get(auth, nearest_poi_location);
+router.route('/nearest_poi_location').get(nearest_poi_location);
 router.route('/nearest_bank').get(auth, nearest_bank);
 router.route('/nearest_bank_location').get(nearest_bank_location);
 router.route('/nearest_bank_distance').get(auth, nearest_bank_distance);
