@@ -2667,8 +2667,8 @@ async function vegetation_monitoring(req:Request, res:Response) {
     });
     // console.log(stat_harvest)
     if (stat_harvest.length < 1) {
-      return res.status(400).json({
-      status: 'failure',
+      return res.status(200).json({
+      status: 'success',
       message: 'No data to display, data available minimum 5 days',
       function: 'vegetation_monitoring',
     });
@@ -2679,8 +2679,8 @@ async function vegetation_monitoring(req:Request, res:Response) {
     })
     if (sum(ndviMax) == 0) {
       return (
-        res.status(400).json({
-          status: 'failure',
+        res.status(200).json({
+          status: 'success',
           message: 'Too cloudy to retrieve data and calculate trend',
           function: 'vegetation_monitoring',
       })
