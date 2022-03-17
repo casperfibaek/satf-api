@@ -2865,8 +2865,8 @@ function vegetation_monitoring(req, res) {
                             });
                             // console.log(stat_harvest)
                             if (stat_harvest.length < 1) {
-                                return [2 /*return*/, res.status(400).json({
-                                        status: 'failure',
+                                return [2 /*return*/, res.status(200).json({
+                                        status: 'success',
                                         message: 'No data to display, data available minimum 5 days',
                                         "function": 'vegetation_monitoring'
                                     })];
@@ -2875,8 +2875,8 @@ function vegetation_monitoring(req, res) {
                                 return item.mean;
                             });
                             if ((0, utils_1.sum)(ndviMax) == 0) {
-                                return [2 /*return*/, (res.status(400).json({
-                                        status: 'failure',
+                                return [2 /*return*/, (res.status(200).json({
+                                        status: 'success',
                                         message: 'Too cloudy to retrieve data and calculate trend',
                                         "function": 'vegetation_monitoring'
                                     }))];
