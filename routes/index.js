@@ -236,7 +236,7 @@ function admin_level_1(req, res) {
                                 "function": 'admin_level_1'
                             })];
                     }
-                    dbQuery = "\n        SELECT \"adm1_name\" AS adm1\n        FROM public.gh_tza_admin\n        WHERE\n            ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n        LIMIT 1;\n    ";
+                    dbQuery = "\n        SELECT \"adm1_name\" AS adm1\n        FROM public.gh_tza_admin\n        WHERE\n            ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(".concat(req.query.lng, ", ").concat(req.query.lat, "), 4326))\n        LIMIT 1;\n    ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -288,7 +288,7 @@ function admin_level_2(req, res) {
                                 "function": 'admin_level_2'
                             })];
                     }
-                    dbQuery = "\n    SELECT \"adm2_name\" AS adm2\n    FROM public.gh_tza_admin\n    WHERE\n        ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(" + req.query.lng + ", " + req.query.lat + "), 4326))\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT \"adm2_name\" AS adm2\n    FROM public.gh_tza_admin\n    WHERE\n        ST_Contains(public.gh_tza_admin.geom, ST_SetSRID(ST_Point(".concat(req.query.lng, ", ").concat(req.query.lat, "), 4326))\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -330,7 +330,7 @@ function api_version(req, res) {
             // req.hostname, req.origin
             // console.log(os.hostname())
             // console.log(host)
-            console.log(req);
+            // console.log(req)
             // api environment
             // os.hostname()
             return [2 /*return*/, res.status(200).json({
@@ -354,7 +354,7 @@ function admin_level_2_fuzzy_tri(req, res) {
                                 "function": 'admin_level_2_fuzzy_tri'
                             })];
                     }
-                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY SIMILARITY(adm2_name, '" + req.query.name + "') DESC\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY SIMILARITY(adm2_name, '".concat(req.query.name, "') DESC\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -399,7 +399,7 @@ function admin_level_2_fuzzy_lev(req, res) {
                                 "function": 'admin_level_2_fuzzy_lev'
                             })];
                     }
-                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY LEVENSHTEIN(adm2_name, '" + req.query.name + "') ASC\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT adm2_name as name\n    FROM gh_tza_admin\n    ORDER BY LEVENSHTEIN(adm2_name, '".concat(req.query.name, "') ASC\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -451,7 +451,7 @@ function urban_status(req, res) {
                                 "function": 'urban_status'
                             })];
                     }
-                    dbQuery = "\n    SELECT ST_Value(urban_status.rast, ST_SetSRID(ST_MakePoint(" + req.query.lng + ", " + req.query.lat + "), 4326)) as urban_status\n    FROM urban_status\n    WHERE ST_Intersects(urban_status.rast, ST_SetSRID(ST_MakePoint(" + req.query.lng + ", " + req.query.lat + "), 4326));\n  ";
+                    dbQuery = "\n    SELECT ST_Value(urban_status.rast, ST_SetSRID(ST_MakePoint(".concat(req.query.lng, ", ").concat(req.query.lat, "), 4326)) as urban_status\n    FROM urban_status\n    WHERE ST_Intersects(urban_status.rast, ST_SetSRID(ST_MakePoint(").concat(req.query.lng, ", ").concat(req.query.lat, "), 4326));\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -503,7 +503,7 @@ function urban_status_simple(req, res) {
                                 "function": 'urban_status_simple'
                             })];
                     }
-                    dbQuery = "\n    SELECT ST_Value(urban_status_simple.rast, ST_SetSRID(ST_MakePoint(" + req.query.lng + ", " + req.query.lat + "), 4326)) as urban_status_simple\n    FROM urban_status_simple\n    WHERE ST_Intersects(urban_status_simple.rast, ST_SetSRID(ST_MakePoint(" + req.query.lng + ", " + req.query.lat + "), 4326));\n  ";
+                    dbQuery = "\n    SELECT ST_Value(urban_status_simple.rast, ST_SetSRID(ST_MakePoint(".concat(req.query.lng, ", ").concat(req.query.lat, "), 4326)) as urban_status_simple\n    FROM urban_status_simple\n    WHERE ST_Intersects(urban_status_simple.rast, ST_SetSRID(ST_MakePoint(").concat(req.query.lng, ", ").concat(req.query.lat, "), 4326));\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -556,7 +556,7 @@ function population_density_buffer(req, res) {
                                 "function": 'population_density_buffer'
                             })];
                     }
-                    dbQuery = "\n    SELECT pop_density_buffer('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.buffer) + "') as pop_dense_buf;\n    ";
+                    dbQuery = "\n    SELECT pop_density_buffer('".concat(req.query.lng, "', '").concat(req.query.lat, "', '").concat(Number(req.query.buffer), "') as pop_dense_buf;\n    ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -608,7 +608,7 @@ function population_buffer(req, res) {
                                 "function": 'population_buffer'
                             })];
                     }
-                    dbQuery = "\n    SELECT pop_buffer('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.buffer) + "') as pop_buf;\n  ";
+                    dbQuery = "\n    SELECT pop_buffer('".concat(req.query.lng, "', '").concat(req.query.lat, "', '").concat(Number(req.query.buffer), "') as pop_buf;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -666,7 +666,7 @@ function population_density_walk(req, res) {
                                 "function": 'population_density_walk'
                             })];
                     }
-                    dbQuery = "\n    SELECT pop_density_buffer_walk('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.minutes) + "') as pop_dense_walk;\n  ";
+                    dbQuery = "\n    SELECT pop_density_buffer_walk('".concat(req.query.lng, "', '").concat(req.query.lat, "', '").concat(Number(req.query.minutes), "') as pop_dense_walk;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -718,7 +718,7 @@ function population_density_bike(req, res) {
                                 "function": 'population_density_bike'
                             })];
                     }
-                    dbQuery = "\n    SELECT pop_density_buffer_bike('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.minutes) + "') as pop_dense_bike;\n  ";
+                    dbQuery = "\n    SELECT pop_density_buffer_bike('".concat(req.query.lng, "', '").concat(req.query.lat, "', '").concat(Number(req.query.minutes), "') as pop_dense_bike;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -770,7 +770,7 @@ function population_density_car(req, res) {
                                 "function": 'population_density_car'
                             })];
                     }
-                    dbQuery = "\n    SELECT pop_density_buffer_car('" + req.query.lng + "', '" + req.query.lat + "', '" + Number(req.query.minutes) + "') as pop_dense_car;\n  ";
+                    dbQuery = "\n    SELECT pop_density_buffer_car('".concat(req.query.lng, "', '").concat(req.query.lat, "', '").concat(Number(req.query.minutes), "') as pop_dense_car;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -828,7 +828,7 @@ function pop_density_isochrone_walk(req, res) {
                 case 1:
                     response = _a.sent();
                     isochrone = JSON.stringify(response.geometry);
-                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_walk;\n  ";
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('".concat(isochrone, "')) as pop_api_iso_walk;\n  ");
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
@@ -886,7 +886,7 @@ function pop_density_isochrone_bike(req, res) {
                 case 1:
                     response = _a.sent();
                     isochrone = JSON.stringify(response.geometry);
-                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_bike;\n  ";
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('".concat(isochrone, "')) as pop_api_iso_bike;\n  ");
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
@@ -958,7 +958,7 @@ function pop_density_isochrone_car(req, res) {
                 case 1:
                     response = _a.sent();
                     isochrone = JSON.stringify(response.geometry);
-                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('" + isochrone + "')) as pop_api_iso_car;\n  ";
+                    dbQuery = "\n    SELECT popDens_apiisochrone(ST_GeomFromGEOJSON('".concat(isochrone, "')) as pop_api_iso_car;\n  ");
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
@@ -1016,7 +1016,7 @@ function nightlights(req, res) {
                 case 1:
                     response = _a.sent();
                     isochrone = JSON.stringify(response.geometry);
-                    dbQuery = "\n    SELECT avg_timeseries_viirs_isochrone('" + isochrone + "') as nightlight;\n  ";
+                    dbQuery = "\n    SELECT avg_timeseries_viirs_isochrone('".concat(isochrone, "') as nightlight;\n  ");
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
@@ -1073,7 +1073,7 @@ function demography(req, res) {
                 case 1:
                     response = _a.sent();
                     isochrone = JSON.stringify(response.geometry);
-                    dbQuery = "\n    SELECT demography_isochrone('" + isochrone + "') as demography;\n  ";
+                    dbQuery = "\n    SELECT demography_isochrone('".concat(isochrone, "') as demography;\n  ");
                     _a.label = 2;
                 case 2:
                     _a.trys.push([2, 4, , 5]);
@@ -1125,7 +1125,7 @@ function nearest_placename(req, res) {
                                 "function": 'nearest_placename'
                             })];
                     }
-                    dbQuery = "\n    SELECT fclass, name FROM gh_tz_places\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT fclass, name FROM gh_tz_places\n    ORDER BY geom <-> ST_SetSRID(ST_Point('".concat(req.query.lng, "', '").concat(req.query.lat, "'), 4326)\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1135,7 +1135,7 @@ function nearest_placename(req, res) {
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].name + ", " + dbResponse.rows[0].fclass,
+                                message: "".concat(dbResponse.rows[0].name, ", ").concat(dbResponse.rows[0].fclass),
                                 "function": 'nearest_placename'
                             })];
                     }
@@ -1177,7 +1177,7 @@ function nearest_poi(req, res) {
                                 "function": 'nearest_poi'
                             })];
                     }
-                    dbQuery = "\n    SELECT fclass, name FROM gh_tz_poi\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT fclass, name FROM gh_tz_poi\n    ORDER BY geom <-> ST_SetSRID(ST_Point('".concat(req.query.lng, "', '").concat(req.query.lat, "'), 4326)\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1187,7 +1187,7 @@ function nearest_poi(req, res) {
                     if (dbResponse.rowCount > 0) {
                         return [2 /*return*/, res.status(200).json({
                                 status: 'success',
-                                message: dbResponse.rows[0].name + ", " + dbResponse.rows[0].fclass,
+                                message: "".concat(dbResponse.rows[0].name, ", ").concat(dbResponse.rows[0].fclass),
                                 "function": 'nearest_poi'
                             })];
                     }
@@ -1229,7 +1229,7 @@ function nearest_poi_location(req, res) {
                                 "function": 'nearest_poi_location'
                             })];
                     }
-                    dbQuery = "\n    SELECT \n      round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\" \n    FROM gh_tz_poi\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT \n      round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\" \n    FROM gh_tz_poi\n    ORDER BY geom <-> ST_SetSRID(ST_Point('".concat(req.query.lng, "', '").concat(req.query.lat, "'), 4326)\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1300,7 +1300,7 @@ function get_banks(req, res) {
                         }
                         target = Number(req.query.target);
                     }
-                    dbQuery = "\n    SELECT\n      \"name\",\n      round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\"\n    FROM gh_tz_poi\n    WHERE \"fclass\" = 'bank' AND (LOWER(\"name\") LIKE '%" + String(name).toLowerCase() + "%' OR similarity(\"name\", '" + name + "') > " + target + ")\n    ORDER BY SIMILARITY(\"name\", 'absa') DESC;\n  ";
+                    dbQuery = "\n    SELECT\n      \"name\",\n      round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\"\n    FROM gh_tz_poi\n    WHERE \"fclass\" = 'bank' AND (LOWER(\"name\") LIKE '%".concat(String(name).toLowerCase(), "%' OR similarity(\"name\", '").concat(name, "') > ").concat(target, ")\n    ORDER BY SIMILARITY(\"name\", 'absa') DESC;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1353,7 +1353,7 @@ function nearest_bank(req, res) {
                                 "function": 'nearest_bank'
                             })];
                     }
-                    dbQuery = "\n    SELECT \"name\"\n    FROM public.gh_tz_poi\n    WHERE fclass = 'bank'\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT \"name\"\n    FROM public.gh_tz_poi\n    WHERE fclass = 'bank'\n    ORDER BY geom <-> ST_SetSRID(ST_Point('".concat(req.query.lng, "', '").concat(req.query.lat, "'), 4326)\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1405,7 +1405,7 @@ function nearest_bank_location(req, res) {
                                 "function": 'nearest_bank_location'
                             })];
                     }
-                    dbQuery = "\n    SELECT\n    round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\"\n    FROM public.gh_tz_poi\n    WHERE fclass = 'bank'\n    ORDER BY geom <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT\n    round(ST_X(\"geom\")::numeric, 6) AS \"lng\",\n      round(ST_Y(\"geom\")::numeric, 6) AS \"lat\"\n    FROM public.gh_tz_poi\n    WHERE fclass = 'bank'\n    ORDER BY geom <-> ST_SetSRID(ST_Point('".concat(req.query.lng, "', '").concat(req.query.lat, "'), 4326)\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1457,7 +1457,7 @@ function nearest_bank_distance(req, res) {
                                 "function": 'nearest_bank_distance'
                             })];
                     }
-                    dbQuery = "\n    SELECT ST_Distance(gh_tz_poi.\"geom\"::geography, ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)::geography)::int AS \"distance\"\n    FROM public.gh_tz_poi WHERE fclass='bank'\n    ORDER BY St_Transform(geom, 4326) <-> ST_SetSRID(ST_Point('" + req.query.lng + "', '" + req.query.lat + "'), 4326)\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT ST_Distance(gh_tz_poi.\"geom\"::geography, ST_SetSRID(ST_Point('".concat(req.query.lng, "', '").concat(req.query.lat, "'), 4326)::geography)::int AS \"distance\"\n    FROM public.gh_tz_poi WHERE fclass='bank'\n    ORDER BY St_Transform(geom, 4326) <-> ST_SetSRID(ST_Point('").concat(req.query.lng, "', '").concat(req.query.lat, "'), 4326)\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1661,7 +1661,7 @@ function usernameExists(username) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "'\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '".concat(username, "'\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1687,7 +1687,7 @@ function verifyUser(username, password) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '" + username + "' and \"password\" = '" + password + "'\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT id\n    FROM users\n    WHERE \"username\" = '".concat(username, "' and \"password\" = '").concat(password, "'\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1713,7 +1713,7 @@ function insertUser(username, password) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    dbQuery = "\n    INSERT INTO users (\"username\", \"password\", \"created_on\", \"last_login\")\n    VALUES ('" + username + "', '" + password + "', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);\n  ";
+                    dbQuery = "\n    INSERT INTO users (\"username\", \"password\", \"created_on\", \"last_login\")\n    VALUES ('".concat(username, "', '").concat(password, "', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1736,7 +1736,7 @@ function deleteUser(username) {
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    dbQuery = "\n    DELETE FROM users\n    WHERE \"username\" = '" + username + "';\n  ";
+                    dbQuery = "\n    DELETE FROM users\n    WHERE \"username\" = '".concat(username, "';\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -1827,10 +1827,11 @@ function login_user(req, res) {
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
+                    console.log(req.body);
                     if (!req.body.username || !req.body.password) {
                         return [2 /*return*/, res.status(400).json({
                                 status: 'failure',
-                                message: 'Request missing username or password!!!!!!!!',
+                                message: 'Request missing username or password',
                                 "function": 'login_user'
                             })];
                     }
@@ -1850,7 +1851,7 @@ function login_user(req, res) {
                             })];
                     }
                     hashedPassword = getHashedPassword(password);
-                    dbQuery = "\n    UPDATE users\n    SET last_login = CURRENT_TIMESTAMP\n    WHERE \"username\" = '" + username + "' AND \"password\" = '" + hashedPassword + "';\n  ";
+                    dbQuery = "\n    UPDATE users\n    SET last_login = CURRENT_TIMESTAMP\n    WHERE \"username\" = '".concat(username, "' AND \"password\" = '").concat(hashedPassword, "';\n  ");
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
@@ -1917,7 +1918,7 @@ function login_user_get(req, res) {
                             })];
                     }
                     hashedPassword = getHashedPassword(password);
-                    dbQuery = "\n    UPDATE users\n    SET last_login = CURRENT_TIMESTAMP\n    WHERE \"username\" = '" + username + "' AND \"password\" = '" + hashedPassword + "';\n  ";
+                    dbQuery = "\n    UPDATE users\n    SET last_login = CURRENT_TIMESTAMP\n    WHERE \"username\" = '".concat(username, "' AND \"password\" = '").concat(hashedPassword, "';\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2235,7 +2236,7 @@ function network_coverage(req, res) {
                                 "function": 'network_coverage'
                             })];
                     }
-                    dbQuery = "\n    SELECT network_coverage('" + req.query.lng + "', '" + req.query.lat + "') as coverage;\n  ";
+                    dbQuery = "\n    SELECT network_coverage('".concat(req.query.lng, "', '").concat(req.query.lat, "') as coverage;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2288,7 +2289,7 @@ function oci_coverage(req, res) {
                                 "function": 'oci_coverage'
                             })];
                     }
-                    dbQuery = "\n    SELECT oci_coverage('" + req.query.lng + "', '" + req.query.lat + "') as coverage;\n  ";
+                    dbQuery = "\n    SELECT oci_coverage('".concat(req.query.lng, "', '").concat(req.query.lat, "') as coverage;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2341,7 +2342,7 @@ function mce_coverage(req, res) {
                                 "function": 'mce_coverage'
                             })];
                     }
-                    dbQuery = "\n    SELECT mce_coverage('" + req.query.lng + "', '" + req.query.lat + "') as coverage;\n  ";
+                    dbQuery = "\n    SELECT mce_coverage('".concat(req.query.lng, "', '").concat(req.query.lat, "') as coverage;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -2953,7 +2954,7 @@ function nearest_waterbody(req, res) {
                                 "function": 'nearest_waterbody'
                             })];
                     }
-                    dbQuery = "\n    SELECT ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('" + req.query.lng + "', '" + req.query.lat + "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('".concat(req.query.lng, "', '").concat(req.query.lat, "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -3012,7 +3013,7 @@ function nearest_waterbody_location(req, res) {
                                 "function": 'nearest_waterbody_location'
                             })];
                     }
-                    dbQuery = "\n    SELECT\n    id as geom_id,\n    ST_AsGeoJSON(w.geom) as geom,\n    fclass as name,\n    ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('" + req.query.lng + "', '" + req.query.lat + "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ";
+                    dbQuery = "\n    SELECT\n    id as geom_id,\n    ST_AsGeoJSON(w.geom) as geom,\n    fclass as name,\n    ROUND((w.geom::geography <-> ST_SetSRID(ST_MakePoint('".concat(req.query.lng, "', '").concat(req.query.lat, "')::geography, 4326))::numeric, 2) as dist, \n    COALESCE(ROUND(body_area::numeric, 2), 0) as body_area\n    FROM gh_tz_waterbodies w\n    ORDER BY dist\n    LIMIT 1;\n  ");
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -3067,8 +3068,8 @@ function get_user_layer_metadata(req, res) {
                     }
                     username = req.query.username;
                     console.log(username);
-                    console.log("fetching layer_metadata for " + username + " from database serverside");
-                    dbQuery = "With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n    From user_layers l\n    LEFT JOIN user_geometries g ON l.layer_id = g.layer_id\n    GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)\n    SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n    FROM selection s\n    LEFT JOIN users u ON s.username = u.username\n    WHERE s.username = '" + username + "'\n    GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count";
+                    console.log("fetching layer_metadata for ".concat(username, " from database serverside"));
+                    dbQuery = "With selection AS(SELECT l.username, l.layer_id, l.name, COUNT(geom), l.created_on, l.last_updated\n    From user_layers l\n    LEFT JOIN user_geometries g ON l.layer_id = g.layer_id\n    GROUP BY l.username, l.layer_id, l.name, l.created_on, l.last_updated)\n    SELECT s.username as username, s.layer_id as layer_id, s.count as count, s.name as name, s.created_on as created_on, s.last_updated as last_updated\n    FROM selection s\n    LEFT JOIN users u ON s.username = u.username\n    WHERE s.username = '".concat(username, "'\n    GROUP BY s.layer_id, s.username, s.name, s.created_on, s.last_updated, s.count");
                     console.log(dbQuery);
                     _a.label = 1;
                 case 1:
@@ -3110,7 +3111,7 @@ function create_layer(req, res) {
                     }
                     _a = req.query, username = _a.username, layername = _a.layername;
                     console.log(username, layername);
-                    dbQuery = "INSERT INTO user_layers (name, username) VALUES ('" + layername + "', '" + username + "')";
+                    dbQuery = "INSERT INTO user_layers (name, username) VALUES ('".concat(layername, "', '").concat(username, "')");
                     _b.label = 1;
                 case 1:
                     _b.trys.push([1, 3, , 4]);
@@ -3150,7 +3151,7 @@ function delete_layer(req, res) {
                             })];
                     }
                     layerId = req.query.layerId;
-                    dbQuery = "\n    DELETE\n    FROM user_layers\n    WHERE layer_id=" + layerId;
+                    dbQuery = "\n    DELETE\n    FROM user_layers\n    WHERE layer_id=".concat(layerId);
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
@@ -3190,7 +3191,7 @@ function get_layer_geoms(req, res) {
                             })];
                     }
                     _a = req.query, username = _a.username, layer_id = _a.layer_id;
-                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name\n\n    FROM user_geometries g\n\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\n    INNER JOIN users u ON g.username = u.username\n\n    WHERE u.username = '" + username + "' AND g.layer_id = " + layer_id + "\n\n    ORDER BY g.layer_id";
+                    dbQuery = "\n    SELECT ST_AsGeoJSON(g.geom)as geom, g.layer_id::INTEGER as layer_id, l.name as layer_name\n\n    FROM user_geometries g\n\n    LEFT JOIN user_layers l ON g.layer_id=l.layer_id\n\n    INNER JOIN users u ON g.username = u.username\n\n    WHERE u.username = '".concat(username, "' AND g.layer_id = ").concat(layer_id, "\n\n    ORDER BY g.layer_id");
                     geomBin = [];
                     propertyBin = [];
                     _b.label = 1;
@@ -3249,8 +3250,8 @@ function update_layer_data(req, res) {
                     _a = req.query, username = _a.username, layerId = _a.layerId;
                     featureCollection = req.body.featureCollection;
                     console.log(featureCollection);
-                    values = featureCollection.features.map(function (f) { return "('" + layerId + "' ,'" + username + "', ST_GeomFromGeoJSON('" + JSON.stringify(f.geometry) + "'))"; });
-                    dbQuery = "INSERT INTO user_geometries (layer_id, username, geom) VALUES " + values.join(",");
+                    values = featureCollection.features.map(function (f) { return "('".concat(layerId, "' ,'").concat(username, "', ST_GeomFromGeoJSON('").concat(JSON.stringify(f.geometry), "'))"); });
+                    dbQuery = "INSERT INTO user_geometries (layer_id, username, geom) VALUES ".concat(values.join(","));
                     console.log(dbQuery);
                     _b.label = 1;
                 case 1:

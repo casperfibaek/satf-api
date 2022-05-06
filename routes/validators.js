@@ -44,7 +44,7 @@ function isValidPluscode(code) {
             return false;
         }
         // There can only be one group and it must have even length.
-        var padMatch = code.match(new RegExp("(" + paddingCharacter + "+)", 'g'));
+        var padMatch = code.match(new RegExp("(".concat(paddingCharacter, "+)"), 'g'));
         if (padMatch.length > 1 || padMatch[0].length % 2 === 1 || padMatch[0].length > seperatorPosition - 2) {
             return false;
         }
@@ -59,7 +59,7 @@ function isValidPluscode(code) {
         return false;
     }
     // Strip the separator and any padding characters.
-    var nosepCode = code.replace(new RegExp("\\" + seperator + "+"), '').replace(new RegExp(paddingCharacter + "+"), '');
+    var nosepCode = code.replace(new RegExp("\\".concat(seperator, "+")), '').replace(new RegExp("".concat(paddingCharacter, "+")), '');
     // Check the code contains only valid characters.
     for (var i = 0, len = nosepCode.length; i < len; i += 1) {
         var character = nosepCode.charAt(i).toUpperCase();

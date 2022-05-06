@@ -280,7 +280,7 @@ async function api_version(req:Request, res:Response) {
   
   // console.log(os.hostname())
   // console.log(host)
-  console.log(req)
+  // console.log(req)
   // api environment
   // os.hostname()
  
@@ -1649,10 +1649,11 @@ async function create_user(req:Request, res:Response) {
 }
 
 async function login_user(req:Request, res:Response) {
+  console.log(req.body);
   if (!req.body.username || !req.body.password) {
     return res.status(400).json({
       status: 'failure',
-      message: 'Request missing username or password!!!!!!!!',
+      message: 'Request missing username or password',
       function: 'login_user',
     } as ApiResponse);
   }
@@ -1673,7 +1674,6 @@ async function login_user(req:Request, res:Response) {
       function: 'login_user',
     } as ApiResponse);
   }
-
   const hashedPassword = getHashedPassword(password);
 
   const dbQuery = `
@@ -1683,6 +1683,7 @@ async function login_user(req:Request, res:Response) {
   `;
 
   try {
+
     const dbResponse = await pool.query(dbQuery);
 
     if (dbResponse.rowCount > 0) {
