@@ -45,18 +45,18 @@ exports.validatePermissionLevel = void 0;
   If the token header is found in the in-ram database it is forwarded.
 
   The token needs the signature: "username:token"
-*/
+  */
+var pg_1 = __importDefault(require("pg"));
 var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 var credentials_1 = __importDefault(require("./credentials"));
-var pg_1 = __importDefault(require("pg"));
 var pool = new pg_1["default"].Pool(credentials_1["default"]);
 function auth(req, res, next) {
     return __awaiter(this, void 0, void 0, function () {
-        var urlPath, funcLevel, satf_token, _a, userId, token, decodedToken, validatedToken, validatedFunctionPermissions, _b;
+        var urlPath, funcLevel, satf_token, _a, userId, token, decodedToken, isTokenValidated, validatedFunctionPermissions, _b;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
-                    urlPath = req.url.split('/')[1];
+                    urlPath = req.url.split('/')[1].split('?')[0];
                     if (urlPath === undefined || urlPath === '') {
                         res.status(401).json({
                             status: 'Error',
@@ -80,14 +80,15 @@ function auth(req, res, next) {
                     satf_token = req.headers.authorization;
                     _a = satf_token.split(':'), userId = _a[0], token = _a[1];
                     decodedToken = jsonwebtoken_1["default"].verify(token, credentials_1["default"].admin_key);
-                    validatedToken = userId === decodedToken.userId;
-                    return [4 /*yield*/, validatePermissionLevel(satf_token, funcName)];
+                    console.log('decodedToken:', decodedToken);
+                    isTokenValidated = userId === decodedToken.userId;
+                    return [4 /*yield*/, validatePermissionLevel(satf_token, urlPath)];
                 case 2:
                     validatedFunctionPermissions = _c.sent();
                     // console.log('satf_token:', satf_token);
                     // console.log('funcName:', funcName);
                     // console.log(validatedToken, validatedFunctionPermissions);
-                    if (validatedToken && validatedFunctionPermissions) {
+                    if (isTokenValidated && validatedFunctionPermissions) {
                         return [2 /*return*/, next()];
                     }
                     else {

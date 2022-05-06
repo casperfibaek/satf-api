@@ -3,21 +3,22 @@
   If the token header is found in the in-ram database it is forwarded.
 
   The token needs the signature: "username:token"
-*/
+  */
+  import pg from 'pg';
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import credentials from './credentials';
 
-// import getHashedPassword from './index';
-import crypto from 'crypto';
-import pg from 'pg';
-import credentials from './credentials';
+interface JwtPayload {
+  userName: string,
+  userId: string,
+}
 
 const pool = new pg.Pool(credentials);
 
 export default async function auth(req:Request, res:Response, next:Function): Promise<void> {
  
-  const urlPath = req.url.split('/')[1];
+  const urlPath = req.url.split('/')[1].split('?')[0];
   if (urlPath === undefined || urlPath === '') {
     res.status(401).json({
       status: 'Error',
@@ -42,15 +43,16 @@ export default async function auth(req:Request, res:Response, next:Function): Pr
   try {
     const satf_token = req.headers.authorization;
     const [userId, token] = satf_token.split(':');
-    const decodedToken = jwt.verify(token, credentials.admin_key);
-    const validatedToken = userId === decodedToken.userId;
-    const validatedFunctionPermissions = await validatePermissionLevel(satf_token, funcName);
+    const decodedToken = jwt.verify(token, credentials.admin_key) as JwtPayload;
+    console.log('decodedToken:', decodedToken);
+    const isTokenValidated = userId === decodedToken.userId;
+    const validatedFunctionPermissions = await validatePermissionLevel(satf_token, urlPath);
 
     // console.log('satf_token:', satf_token);
     // console.log('funcName:', funcName);
     // console.log(validatedToken, validatedFunctionPermissions);
 
-    if (validatedToken && validatedFunctionPermissions) {
+    if (isTokenValidated && validatedFunctionPermissions) {
       return next();
     } else {
       res.status(401).json({
